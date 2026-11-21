@@ -9,7 +9,7 @@ Text and settings for the CurseForge project page. This file is not packaged.
 
 ## Summary
 
-Marks the player who attacks you first in world PvP, warns you when they show up again and shares the list with friends and guild.
+Automatically marks whoever attacks you first in world PvP, and shows on your nameplates the players your guild and friends marked.
 
 ## Description
 
@@ -17,15 +17,18 @@ Paste everything between the lines into the CurseForge description editor (Markd
 
 ---
 
-**PvP Watchlist** marks the enemy player who attacks you first in world PvP and warns you when they show up again. Made for **WoW: Forever**.
+**PvP Watchlist** builds your kill-on-sight list for you. Whoever attacks you first in world PvP is marked automatically, with no clicks, and the players your guild and friends marked show up on your own nameplates. Made for **WoW: Forever**.
+
+### Why PvP Watchlist
+
+- **No clicks.** The moment an enemy player attacks you, they are on your list, even if you survive the fight. Players who only fought back because you attacked them first are left out.
+- **Your guild's list on your screen.** Players marked by guildmates and friends who also use PvP Watchlist get their own icon above the nameplate and a chat alert when they show up, so you see who has been ganking your guild before they get to you.
 
 ### What it does
 
-- When an enemy player attacks you, PvP Watchlist marks them and remembers their class, level, guild, where it happened and how many times they attacked you.
-- Marked players get a raid icon (a skull by default) above their nameplate, with the attack count next to it.
+- Each marked player is saved with their class, level, guild, where it happened and how many times they attacked you.
+- A raid icon above the nameplate, with the attack count next to it. Your list, your friends' and your guild's each get the icon you pick in the settings (skull, cross and triangle by default), and they can all be the same.
 - When a marked player shows up again (nameplate, target or mouseover), you get a sound, a chat message and a warning in the middle of the screen, at most once every 5 minutes per player. Their tooltip shows the history too.
-- Players who only fought back because you attacked them first are not marked.
-- Shares your list with friends and guildmates who also use PvP Watchlist. Each list (yours, your friends', your guild's) gets the raid icon you pick in the settings, and they can all be the same. By default: skull for yours, cross for friends, triangle for the guild.
 - Optional emote at the attacker when they are marked (`/no` by default). You can pick another one or turn it off.
 - Minimap button, an entry in the AddOns menu next to the minimap, and a settings screen.
 - No libraries and no other addons needed.
