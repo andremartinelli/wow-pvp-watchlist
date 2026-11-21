@@ -130,7 +130,7 @@ end
 local function U(name, realm) return table.concat({ "U1", name, realm or "Reino" }, SEP) end
 local function addonMsg(text, kind, sender) fire("CHAT_MSG_ADDON", "PvPW", text, kind, sender, "Jogador-Reino") end
 
--- lista que ja existia antes da 1.5.0 (com o X escolhido como icone)
+-- lista que ja existia antes da 1.5.0 (com o X escolhido como icone da sua lista)
 units.player = { name = "Jogador", isPlayer = true, level = 30 }
 PvPWatchlistDB = { settings = { icon = 7 }, players = {
   velho = { name = "Velho", count = 2, first = time() - 900, last = time() - 100, where = "Vale", how = "alvo" },
@@ -143,7 +143,8 @@ assert(loadfile("Share.lua"))("PvPWatchlist", ns)
 fire("ADDON_LOADED", "PvPWatchlist")
 local DB, S = PvPWatchlistDB, PvPWatchlistDB.settings
 check(prefixes.PvPW, "prefixo de mensagens PvPW registrado")
-check(S.icon == 8, "quem usava o X na propria lista volta para a caveira (o X agora e dos amigos)")
+check(S.icon == 7 and S.friendsIcon == 7 and S.guildIcon == 4, "o X escolhido para a sua lista continua; amigos X e guilda triangulo por padrao")
+S.icon = 8
 check(DB.shared.friends and DB.shared.guild and DB.blocked, "listas recebidas e bloqueados criados")
 check(S.shareGuild and S.shareFriends and not S.shareBnet and S.sharedAlerts and not S.sharedCenter, "padroes do compartilhamento")
 
@@ -176,13 +177,13 @@ check(sentHas("GUILD", nil, "^M1" .. SEP .. "Ganker" .. SEP .. "Player%-1%-AAA" 
 check(sentHas("WHISPER", "Amigo", "^M1" .. SEP .. "Ganker"), "e para o amigo online")
 removePlate("nameplate1")
 
-print("-- recebe da guilda: icone G, mensagem sem som e sem aviso no centro")
+print("-- recebe da guilda: icone da guilda, mensagem sem som e sem aviso no centro")
 sounds, centers, out = 0, {}, {}
 addonMsg(M("Rival", { guid = "Player-1-BBB", class = "Rogue", classFile = "ROGUE", level = 31, count = 2, last = time() - 60 }), "GUILD", "Guildeiro-Reino")
 local g = DB.shared.guild.rival
 check(g and g.by == "Guildeiro" and g.count == 2 and g.class == "Ladino", "guardado na lista da guilda, com a classe traduzida")
 addPlate("nameplate2", { name = "Rival", guid = "Player-1-BBB", isPlayer = true, enemy = true, canAttack = true, level = 31 })
-check(plates.nameplate2.kosSkull and plates.nameplate2.kosSkull.texture:find("media\\guild$"), "icone G na barra de nome")
+check(plates.nameplate2.kosSkull and plates.nameplate2.kosSkull.texture:find("_4$"), "icone da guilda (triangulo) na barra de nome")
 check(plates.nameplate2.kosCount.text == "2", "numero de ataques ao lado")
 check(has("Apareceu: Rival %(Ladino 31%) %- atacou Guildeiro 2 vezes %(guilda%)") and has("%[ocultar%]"), "mensagem com quem marcou e link [ocultar]")
 check(sounds == 0 and #centers == 0, "sem som e sem aviso no centro")
@@ -201,7 +202,21 @@ print("-- recebe de amigo: icone X")
 addonMsg(M("Cacador", { guid = "Player-1-CCC", class = "Mage", classFile = "MAGE", count = 1 }), "WHISPER", "Amigo-Reino")
 check(DB.shared.friends.cacador and DB.shared.friends.cacador.by == "Amigo", "guardado na lista dos amigos")
 addPlate("nameplate3", { name = "Cacador", guid = "Player-1-CCC", isPlayer = true, enemy = true, canAttack = true })
-check(plates.nameplate3.kosSkull.texture:find("_7$"), "icone X na barra de nome")
+check(plates.nameplate3.kosSkull.texture:find("_7$"), "icone dos amigos (X) na barra de nome")
+
+print("-- icone escolhido para cada lista, ate o mesmo para todas")
+S.friendsIcon, S.guildIcon = 2, 5
+fire("PLAYER_ENTERING_WORLD")
+check(plates.nameplate3.kosSkull.texture:find("_2$") and plates.nameplate2.kosSkull.texture:find("_5$"),
+  "amigos com Circulo e guilda com Lua")
+S.icon, S.friendsIcon, S.guildIcon = 8, 8, 8
+fire("PLAYER_ENTERING_WORLD")
+check(plates.nameplate3.kosSkull.texture:find("_8$") and plates.nameplate2.kosSkull.texture:find("_8$"), "as tres listas com a caveira")
+tip.lines = {}; tip.GetUnit = function() return "Cacador", "nameplate3" end; tooltipHook(tip)
+check(tip.lines[1] and tip.lines[1]:find("%(amigos%)"), "com o mesmo icone, o tooltip ainda diz de onde veio")
+tip.GetUnit = function() return "Rival", "nameplate2" end
+S.icon, S.friendsIcon, S.guildIcon = 8, 7, 4
+fire("PLAYER_ENTERING_WORLD")
 
 print("-- estranhos e a propria mensagem sao ignorados")
 addonMsg(M("Ninguem"), "WHISPER", "Estranho-Reino")
@@ -214,7 +229,7 @@ check(not DB.shared.friends.falso and not DB.shared.guild.falso, "remetente secr
 print("-- a sua marcacao vem primeiro")
 units.target = units.nameplate2
 slash("marcar")
-check(plates.nameplate2.kosSkull.texture:find("_8$"), "marcado por voce: caveira no lugar do G")
+check(plates.nameplate2.kosSkull.texture:find("_8$"), "marcado por voce: o seu icone no lugar do da guilda")
 tip.lines = {}; tooltipHook(tip)
 check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: te atacou") and tip.lines[2] and tip.lines[2]:find("%(guilda%)"),
   "tooltip com a sua linha e a da guilda")
@@ -260,7 +275,7 @@ check(DB.shared.guild.fantasma == nil, "nao recebe da guilda")
 S.shareGuild = true
 addonMsg(M("Visto", { guid = "Player-1-EEE" }), "GUILD", "Guildeiro-Reino")
 addPlate("nameplate4", { name = "Visto", guid = "Player-1-EEE", isPlayer = true, enemy = true, canAttack = true })
-check(plates.nameplate4.kosSkull.shown, "G aparece com a guilda ligada")
+check(plates.nameplate4.kosSkull.shown, "icone da guilda aparece com a guilda ligada")
 S.shareGuild = false; fire("PLAYER_ENTERING_WORLD")
 check(plates.nameplate4.kosSkull.shown == false, "e some quando desliga")
 S.shareGuild = true; fire("PLAYER_ENTERING_WORLD"); removePlate("nameplate4")

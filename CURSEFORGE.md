@@ -25,7 +25,7 @@ Paste everything between the lines into the CurseForge description editor (Markd
 - Marked players get a raid icon (a skull by default) above their nameplate, with the attack count next to it.
 - When a marked player shows up again (nameplate, target or mouseover), you get a sound, a chat message and a warning in the middle of the screen, at most once every 5 minutes per player. Their tooltip shows the history too.
 - Players who only fought back because you attacked them first are not marked.
-- Shares your list with friends and guildmates who also use PvP Watchlist. Players they marked show an **X** (friends) or a **G** (guild) on the nameplate; yours keep the skull.
+- Shares your list with friends and guildmates who also use PvP Watchlist. Each list (yours, your friends', your guild's) gets the raid icon you pick in the settings, and they can all be the same. By default: skull for yours, cross for friends, triangle for the guild.
 - Optional emote at the attacker when they are marked (`/no` by default). You can pick another one or turn it off.
 - Minimap button, an entry in the AddOns menu next to the minimap, and a settings screen.
 - No libraries and no other addons needed.
@@ -79,7 +79,7 @@ Open **Options > AddOns > PvP Watchlist**, or type `/pvpw options`.
 
 - **Detection:** automatic marking on or off; don't mark players you attacked first, and for how long to remember your attack; ignore players far below your level.
 - **Reaction:** the emote at the attacker, and which one (`/no`, `/rude`, `/laugh`, `/chicken`, `/spit` or `/point`).
-- **Nameplate marker:** which raid icon, its size, and whether to show the attack count.
+- **Nameplate marker:** which raid icon for your list, for players marked by friends and for players marked by the guild (they can be the same), its size, and whether to show the attack count.
 - **Alerts:** sound (three choices, with a test button), chat message, big warning on the screen, and the line in the player's tooltip.
 - **Interface:** minimap button and language.
 - **Sharing:** share with your guild and with your friends list (both on by default) and with Battle.net friends (off by default); chat alert for players marked by them, and optionally the big warning on the screen too.

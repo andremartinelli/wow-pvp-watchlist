@@ -12,7 +12,7 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 - Os marcados ganham um ícone na barra de nome, com o número de ataques ao lado.
 - Quando um marcado aparece de novo, você recebe um aviso: som, mensagem no chat e aviso no centro da tela. O tooltip dele também mostra o histórico.
 - Não marca quem só revidou porque você atacou primeiro.
-- Troca a lista com os amigos e com a guilda que também usam o addon. Os marcados por eles aparecem com um **X** (amigos) ou um **G** (guilda); os seus continuam com a caveira.
+- Troca a lista com os amigos e com a guilda que também usam o addon. Cada lista (a sua, a dos amigos e a da guilda) tem o ícone que você escolher nas configurações, e pode ser o mesmo para todas. O padrão é caveira para a sua, X para amigos e triângulo para a guilda.
 - Pode fazer um emote no atacante (`/no`, `/rude`, `/laugh`...).
 - Tem botão no minimapa, entrada no menu de addons e tela de configurações em **Opções > AddOns > PvP Watchlist**.
 - Funciona em português e em inglês. O idioma segue o do jogo ou pode ser escolhido nas configurações.
@@ -101,7 +101,7 @@ Uma tag `v*` (por exemplo `v1.4.0`) dispara o GitHub Actions, que empacota o add
 - Marked players get an icon on their nameplate, with the attack count next to it.
 - When a marked player shows up again, you get a sound, a chat message and a warning in the middle of the screen. Their tooltip shows the history too.
 - Players who only fought back because you attacked first are not marked.
-- Shares the list with friends and guildmates who also use the addon. Players they marked show an **X** (friends) or a **G** (guild); yours keep the skull.
+- Shares the list with friends and guildmates who also use the addon. Each list (yours, friends', guild's) uses the raid icon you pick in the settings, and they can all be the same. By default: skull for yours, cross for friends, triangle for the guild.
 - Optional emote at the attacker (`/no`, `/rude`, `/laugh`...).
 - Minimap button, an entry in the AddOns menu, and a settings screen under **Options > AddOns > PvP Watchlist**.
 - English and Portuguese. The language follows the game client, or you can pick one in the settings.

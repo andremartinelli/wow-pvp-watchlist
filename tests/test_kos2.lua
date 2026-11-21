@@ -132,7 +132,8 @@ local B = { enabled = boxes[1], skip = boxes[2], ignoreLow = boxes[3], emote = b
 check(B.shareGuild.checked == true and B.shareFriends.checked == true and B.shareBnet.checked == false
   and B.sharedAlerts.checked == true and B.sharedCenter.checked == false, "compartilhamento: guilda e amigos ligados, Battle.net e aviso no centro desligados")
 local SL = { memory = sliders[1], levels = sliders[2], size = sliders[3] }
-local emoteBtn, emoteTestBtn, iconBtn, soundBtn, testBtn = buttons[1], buttons[2], buttons[3], buttons[4], buttons[5]
+local emoteBtn, emoteTestBtn, iconBtn, friendsIconBtn, guildIconBtn, soundBtn, testBtn =
+  buttons[1], buttons[2], buttons[3], buttons[4], buttons[5], buttons[6], buttons[7]
 main.panel.scripts.OnShow(main.panel)
 check(B.enabled.checked == true and B.ignoreLow.checked == false and B.emote.checked == true and SL.size.value == 26, "valores padrao aparecem na tela")
 
@@ -163,9 +164,18 @@ click(emoteBtn, "RightButton")
 check(S.emoteToken == "NO", "botao direito volta para /no")
 print("-- icone, tamanho e numero")
 click(iconBtn)
-check(S.icon == 1 and p1.kosSkull.texture:find("_1$"), "icone trocado para Estrela (o X ficou para os amigos)")
+check(S.icon == 7 and p1.kosSkull.texture:find("_7$"), "icone da sua lista trocado para X na barra de nome")
 click(iconBtn, "RightButton")
 check(S.icon == 8, "botao direito volta para caveira")
+check(S.friendsIcon == 7 and S.guildIcon == 4 and friendsIconBtn.text == "X" and guildIconBtn.text == "Triângulo",
+  "icones padrao: amigos X, guilda triangulo")
+click(friendsIconBtn)
+check(S.friendsIcon == 1 and friendsIconBtn.text == "Estrela", "icone dos amigos trocado para Estrela")
+click(guildIconBtn, "RightButton")
+check(S.guildIcon == 3 and guildIconBtn.text == "Losango", "icone da guilda trocado para Losango (botao direito)")
+for _ = 1, 6 do click(friendsIconBtn) end -- Estrela e a 3a de 8: mais 6 cliques da a volta ate a Caveira
+check(S.friendsIcon == 8, "amigos podem usar a caveira, a mesma da sua lista")
+S.friendsIcon, S.guildIcon = 7, 4
 SL.size:SetValue(40)
 check(S.iconSize == 40 and p1.kosSkull.w == 40, "tamanho 40 aplicado")
 setBox(B.showCount, false)
@@ -227,7 +237,7 @@ check(#tip.lines == 0, "tooltip desligado")
 
 print("-- lista na subpagina e desmarcar por botao")
 list.panel.scripts.OnShow(list.panel)
-local rowBtn = buttons[7] -- 6 = idioma
+local rowBtn = buttons[9] -- 8 = idioma
 check(rowBtn.shown, "primeira linha da lista com botao Desmarcar")
 out = {}; click(rowBtn)
 check(has("desmarcado"), "botao Desmarcar funciona")

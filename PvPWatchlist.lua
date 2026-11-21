@@ -1,9 +1,9 @@
 -- PvP Watchlist 1.5.0 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
 -- Marca quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
--- Textos em Locales.lua (portugues e ingles). Icones em media/ (icon.tga e guild.tga).
+-- Textos em Locales.lua (portugues e ingles). Icone do addon em media/icon.tga.
 -- A troca de marcados com amigos e guilda fica em Share.lua; aqui ficam as listas recebidas (db.shared),
--- os icones por origem (caveira = sua lista, X = amigos, G = guilda), os avisos e a tela.
+-- o icone de cada lista (sua, amigos, guilda: escolhido nas configuracoes, pode ser o mesmo), os avisos e a tela.
 --
 -- O Forever bloqueia COMBAT_LOG_EVENT_UNFILTERED para addons, entao o addon nao sabe quem deu cada golpe.
 -- Como funciona: quando voce leva um golpe (UNIT_COMBAT no "player") ou entra em combate, ele procura, por
@@ -19,7 +19,7 @@ ns = ns or {}
 local ICON_PATH = "Interface\\AddOns\\" .. ADDON .. "\\media\\icon"
 local LINK_BASE = "addon:" .. ADDON .. ":"   -- links do chat: "unmark:<chave>" e "hide:<origem>:<chave>"
 local RAID_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
-local SOURCE_ICONS = { friends = RAID_ICON .. "7", guild = "Interface\\AddOns\\" .. ADDON .. "\\media\\guild" }
+local ICON_SETTING = { mine = "icon", friends = "friendsIcon", guild = "guildIcon" } -- opcao de icone de cada lista
 local CIRCLES = { "friends", "guild" }        -- listas recebidas, na ordem de prioridade depois da sua
 local SCAN_WINDOW = 3        -- segundos procurando o atacante depois de um golpe (pega o ladino que sai da furtividade)
 local SCAN_STEP = 0.2        -- intervalo entre as procuras dentro dessa janela
@@ -38,7 +38,9 @@ local DEFAULTS = {
     ignoreLowLevels = 10,     -- diferenca de niveis para ignorar
     emote = true,             -- fazer um emote no atacante quando ele e marcado
     emoteToken = "NO",        -- qual emote (/no)
-    icon = 8,                 -- icone de raide (8 = caveira)
+    icon = 8,                 -- icone de raide da sua lista (8 = caveira)
+    friendsIcon = 7,          -- icone dos marcados por amigos (7 = X)
+    guildIcon = 4,            -- icone dos marcados pela guilda (4 = triangulo verde, a cor do chat da guilda)
     iconSize = 26,
     showCount = true,         -- numero de ataques ao lado do icone
     sound = true,
@@ -81,9 +83,9 @@ local L = setmetatable({}, { __index = function(_, k)
 end })
 lang = pickLanguage("auto")
 
--- Icones para a sua lista. O X (7) fica reservado para os marcados dos amigos e o G para os da guilda.
+-- Os 8 icones de raide. Cada lista (sua, amigos, guilda) escolhe o seu, e podem ser iguais.
 local ICONS = {
-    { id = 8, labelKey = "ICON_SKULL" }, { id = 1, labelKey = "ICON_STAR" },
+    { id = 8, labelKey = "ICON_SKULL" }, { id = 7, labelKey = "ICON_CROSS" }, { id = 1, labelKey = "ICON_STAR" },
     { id = 2, labelKey = "ICON_CIRCLE" }, { id = 3, labelKey = "ICON_DIAMOND" }, { id = 4, labelKey = "ICON_TRIANGLE" },
     { id = 5, labelKey = "ICON_MOON" }, { id = 6, labelKey = "ICON_SQUARE" },
 }
@@ -91,8 +93,8 @@ for _, e in ipairs(ICONS) do e.icon = RAID_ICON .. e.id end
 -- Filtro da pagina "Marcados".
 local LIST_SOURCES = {
     { id = "mine", labelKey = "FILTER_MINE" },
-    { id = "friends", labelKey = "FILTER_FRIENDS", icon = SOURCE_ICONS.friends },
-    { id = "guild", labelKey = "FILTER_GUILD", icon = SOURCE_ICONS.guild },
+    { id = "friends", labelKey = "FILTER_FRIENDS" },
+    { id = "guild", labelKey = "FILTER_GUILD" },
 }
 local EMOTES = {
     { id = "NO", label = "/no" }, { id = "RUDE", label = "/rude" }, { id = "LAUGH", label = "/laugh" },
@@ -267,10 +269,8 @@ end
 
 local function plural(n) return n == 1 and L.TIMES_ONE or string.format(L.TIMES_N, n) end
 
-local function iconTexture() return findIn(ICONS, S.icon).icon end
-
--- Icone de cada origem: o escolhido para a sua lista, X para amigos, G para a guilda.
-local function sourceTexture(source) return SOURCE_ICONS[source] or iconTexture() end
+-- Icone escolhido para a lista de onde veio a marcacao ("mine", "friends" ou "guild").
+local function sourceTexture(source) return findIn(ICONS, S[ICON_SETTING[source] or "icon"]).icon end
 
 local function playAlert(force)
     if not S.sound and not force then return end
@@ -560,7 +560,7 @@ local function checkUnit(unit, fromPlate)
     e.seen = t
     if source == "mine" then
         playAlert()
-        centerWarning("|T" .. iconTexture() .. ":18|t " .. string.format(L.NEARBY, e.name, plural(e.count or 1)), S.center)
+        centerWarning("|T" .. sourceTexture("mine") .. ":18|t " .. string.format(L.NEARBY, e.name, plural(e.count or 1)), S.center)
         if S.msg then
             say("|cffffd100" .. L.SPOTTED .. "|r " .. string.format(L.SPOTTED_MSG, describe(e), plural(e.count or 1),
                 day(e.last), e.where or "?"))
@@ -813,7 +813,7 @@ local function buildOptions()
         scroll:SetPoint("TOPLEFT", 0, -4)
         scroll:SetPoint("BOTTOMRIGHT", -28, 4)
         content = CreateFrame("Frame", nil, scroll)
-        content:SetSize(620, 1000)
+        content:SetSize(620, 1060)
         scroll:SetScrollChild(content)
     end
     local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -844,6 +844,8 @@ local function buildOptions()
     y = y - 8
     y = header(content, y, L.H_PLATE)
     y = cycler(content, y, L.OPT_ICON, "icon", ICONS, refreshPlates)
+    y = cycler(content, y, L.OPT_ICON_FRIENDS, "friendsIcon", ICONS, refreshPlates)
+    y = cycler(content, y, L.OPT_ICON_GUILD, "guildIcon", ICONS, refreshPlates)
     y = slider(content, y, L.OPT_ICON_SIZE, "iconSize", 16, 48, 2, "", refreshPlates)
     y = checkbox(content, y, L.OPT_COUNT, "showCount", L.OPT_COUNT_TIP, refreshPlates)
     y = y - 8
@@ -1178,7 +1180,6 @@ f:SetScript("OnEvent", function(self, event, ...)
         for k, v in pairs(DEFAULTS) do
             if S[k] == nil then S[k] = v end
         end
-        if S.icon == 7 then S.icon = 8 end -- o X agora marca quem veio dos amigos
         lang = pickLanguage(S.language)
         local ok, err = pcall(buildOptions)
         if not ok then debug(string.format(L.DBG_OPTIONS_FAILED, tostring(err))) end

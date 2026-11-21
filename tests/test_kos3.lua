@@ -220,7 +220,7 @@ check(S.language == "auto" and has("Language: Automatic"), "/kos idioma auto vol
 tip.lines = {}; tooltipHook(tip)
 check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: attacked you once, last time on %a%a%a %d%d"), "tooltip em ingles com data por extenso: " .. tostring(tip.lines[1]))
 -- botao de idioma na tela: auto -> Português
-local langBtn = created.Button[6]
+local langBtn = created.Button[8] -- depois dos 3 icones (sua lista, amigos, guilda)
 out = {}; click(langBtn)
 check(S.language == "ptBR" and langBtn.text == "Português" and has("Idioma: Português"), "botao Language na tela troca para portugues")
 click(langBtn); click(langBtn)
