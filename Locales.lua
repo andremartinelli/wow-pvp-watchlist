@@ -1,4 +1,4 @@
--- killonsight: textos em portugues (ptBR) e ingles (enUS).
+-- PvP Watchlist: textos em portugues (ptBR) e ingles (enUS).
 -- O idioma segue o do cliente (ptBR/ptPT -> portugues, qualquer outro -> ingles) ou a opcao "Idioma".
 -- Texto que falta numa lingua cai no ingles.
 local _, ns = ...
@@ -8,7 +8,9 @@ ns.LOCALES = {}
 
 ns.LOCALES.ptBR = {
     -- geral
-    LOADED = "carregado: %d marcado(s). /kos para ver os comandos.",
+    TITLE = "PvP Watchlist",
+    TAG = "PvPW",
+    LOADED = "carregado: %d marcado(s). /pvpw para ver os comandos.",
     UNMARK_LINK = "desmarcar",
     MARKED_MANUAL = "Marcado à mão: %s.",
     MARKED = "Marcado: %s te atacou em %s (%s).",
@@ -23,7 +25,7 @@ ns.LOCALES.ptBR = {
     NEARBY = "%s por perto - te atacou %s",
     SPOTTED = "Apareceu:",
     SPOTTED_MSG = "%s - te atacou %s, a última em %s em %s.",
-    TOOLTIP_LINE = "KoS: te atacou %s, a última em %s em %s",
+    TOOLTIP_LINE = "PvP Watchlist: te atacou %s, a última em %s em %s",
     -- debug
     DBG_FOUGHT_BACK = "%s revidou: você atacou primeiro, não marquei",
     DBG_TOO_LOW = "%s está muito abaixo do seu nível: ignorado",
@@ -34,6 +36,8 @@ ns.LOCALES.ptBR = {
     DBG_COMBAT = "entrou em combate",
     DBG_I_ATTACKED = "você atacou %s",
     DBG_OPTIONS_FAILED = "tela de configurações falhou: %s",
+    DBG_MINIMAP_FAILED = "botão do minimapa falhou: %s",
+    DBG_KOS_TAKEN = "/kos já é usado por outro addon (%s): use /pvpw",
     -- opcoes dos botoes
     ICON_SKULL = "Caveira", ICON_CROSS = "X", ICON_STAR = "Estrela", ICON_CIRCLE = "Círculo",
     ICON_DIAMOND = "Losango", ICON_TRIANGLE = "Triângulo", ICON_MOON = "Lua", ICON_SQUARE = "Quadrado",
@@ -43,7 +47,7 @@ ns.LOCALES.ptBR = {
     LANG_AUTO = "Automático (do jogo)",
     -- tela de configuracoes
     CYCLER_TIP = "Clique para a próxima opção; botão direito para a anterior.",
-    SUBTITLE = "Marca quem te ataca primeiro no PvP de mundo. Lista em \"Marcados\", logo abaixo. Comandos: /kos",
+    SUBTITLE = "Marca quem te ataca primeiro no PvP de mundo. Lista em \"Marcados\", logo abaixo. Comandos: /pvpw",
     H_DETECTION = "Detecção",
     OPT_ENABLED = "Marcar automaticamente quem me ataca",
     OPT_ENABLED_TIP = "Desligado, ninguém novo é marcado, mas os já marcados continuam com ícone e aviso.",
@@ -90,7 +94,7 @@ ns.LOCALES.ptBR = {
     LIST_ROW = "%s - %s, última em %s em %s",
     -- comandos
     NO_OPTIONS = "A tela de configurações não está disponível neste cliente.",
-    OPEN_OPTIONS = "Abra em Opções > AddOns > killonsight.",
+    OPEN_OPTIONS = "Abra em Opções > AddOns > PvP Watchlist.",
     LIST_HEADER = "%d marcado(s), do mais recente:",
     LIST_MORE = "... e mais %d",
     T_SOUND = "Som",
@@ -103,21 +107,21 @@ ns.LOCALES.ptBR = {
     NOBODY_NAMED = "Ninguém marcado com o nome %s.",
     NEED_ENEMY_TARGET = "Ponha um jogador inimigo no alvo para marcar.",
     TEST_MODE = "Modo teste %s",
-    TEST_MODE_ON = ": adversário de duelo conta como inimigo. Desligue com /kos teste depois.",
+    TEST_MODE_ON = ": adversário de duelo conta como inimigo. Desligue com /pvpw teste depois.",
     LANG_SET = "Idioma: %s. Use /reload para traduzir também a tela de configurações.",
-    LANG_USAGE = "Use /kos idioma auto | pt | en",
+    LANG_USAGE = "Use /pvpw idioma auto | pt | en",
     HELP = {
-        "Comandos:",
-        "  /kos config - abre as configurações (também em Opções > AddOns)",
-        "  /kos lista - mostra os marcados (com link para desmarcar)",
-        "  /kos tirar - desmarca o seu alvo",
-        "  /kos apagar Nome - desmarca pelo nome",
-        "  /kos marcar - marca o seu alvo à mão",
-        "  /kos som | mensagem | emote - liga/desliga o som, a mensagem de aviso ou o emote",
-        "  /kos minimapa - mostra/esconde o botão no minimapa",
-        "  /kos idioma auto | pt | en - muda o idioma do addon",
-        "  /kos teste - adversário de duelo conta como inimigo (para testar)",
-        "  /kos debug - mostra o que o addon está vendo",
+        "Comandos (/kos também funciona se nenhum outro addon usar):",
+        "  /pvpw config - abre as configurações (também em Opções > AddOns)",
+        "  /pvpw lista - mostra os marcados (com link para desmarcar)",
+        "  /pvpw tirar - desmarca o seu alvo",
+        "  /pvpw apagar Nome - desmarca pelo nome",
+        "  /pvpw marcar - marca o seu alvo à mão",
+        "  /pvpw som | mensagem | emote - liga/desliga o som, a mensagem de aviso ou o emote",
+        "  /pvpw minimapa - mostra/esconde o botão no minimapa",
+        "  /pvpw idioma auto | pt | en - muda o idioma do addon",
+        "  /pvpw teste - adversário de duelo conta como inimigo (para testar)",
+        "  /pvpw debug - mostra o que o addon está vendo",
     },
     -- botao do minimapa e menu de addons
     TIP_STATUS = "Marcação automática: %s",
@@ -129,7 +133,9 @@ ns.LOCALES.ptBR = {
 
 ns.LOCALES.enUS = {
     -- general
-    LOADED = "loaded: %d marked. Type /kos for commands.",
+    TITLE = "PvP Watchlist",
+    TAG = "PvPW",
+    LOADED = "loaded: %d marked. Type /pvpw for commands.",
     UNMARK_LINK = "unmark",
     MARKED_MANUAL = "Marked manually: %s.",
     MARKED = "Marked: %s attacked you at %s (%s).",
@@ -144,7 +150,7 @@ ns.LOCALES.enUS = {
     NEARBY = "%s nearby - attacked you %s",
     SPOTTED = "Spotted:",
     SPOTTED_MSG = "%s - attacked you %s, last time on %s at %s.",
-    TOOLTIP_LINE = "KoS: attacked you %s, last time on %s at %s",
+    TOOLTIP_LINE = "PvP Watchlist: attacked you %s, last time on %s at %s",
     -- debug
     DBG_FOUGHT_BACK = "%s fought back: you attacked first, not marked",
     DBG_TOO_LOW = "%s is far below your level: ignored",
@@ -155,6 +161,8 @@ ns.LOCALES.enUS = {
     DBG_COMBAT = "entered combat",
     DBG_I_ATTACKED = "you attacked %s",
     DBG_OPTIONS_FAILED = "settings screen failed: %s",
+    DBG_MINIMAP_FAILED = "minimap button failed: %s",
+    DBG_KOS_TAKEN = "/kos is already used by another addon (%s): use /pvpw",
     -- button choices
     ICON_SKULL = "Skull", ICON_CROSS = "Cross", ICON_STAR = "Star", ICON_CIRCLE = "Circle",
     ICON_DIAMOND = "Diamond", ICON_TRIANGLE = "Triangle", ICON_MOON = "Moon", ICON_SQUARE = "Square",
@@ -164,7 +172,7 @@ ns.LOCALES.enUS = {
     LANG_AUTO = "Automatic (game's)",
     -- settings screen
     CYCLER_TIP = "Click for the next option; right-click for the previous one.",
-    SUBTITLE = "Marks whoever attacks you first in world PvP. List under \"Marked\", just below. Commands: /kos",
+    SUBTITLE = "Marks whoever attacks you first in world PvP. List under \"Marked\", just below. Commands: /pvpw",
     H_DETECTION = "Detection",
     OPT_ENABLED = "Automatically mark whoever attacks me",
     OPT_ENABLED_TIP = "When off, nobody new is marked, but players already marked keep their icon and alerts.",
@@ -211,7 +219,7 @@ ns.LOCALES.enUS = {
     LIST_ROW = "%s - %s, last on %s at %s",
     -- commands
     NO_OPTIONS = "The settings screen is not available in this client.",
-    OPEN_OPTIONS = "Open it in Options > AddOns > killonsight.",
+    OPEN_OPTIONS = "Open it in Options > AddOns > PvP Watchlist.",
     LIST_HEADER = "%d marked, newest first:",
     LIST_MORE = "... and %d more",
     T_SOUND = "Sound",
@@ -224,21 +232,21 @@ ns.LOCALES.enUS = {
     NOBODY_NAMED = "Nobody marked with the name %s.",
     NEED_ENEMY_TARGET = "Target an enemy player to mark them.",
     TEST_MODE = "Test mode %s",
-    TEST_MODE_ON = ": duel opponents count as enemies. Turn it off later with /kos test.",
+    TEST_MODE_ON = ": duel opponents count as enemies. Turn it off later with /pvpw test.",
     LANG_SET = "Language: %s. Type /reload to translate the settings screen too.",
-    LANG_USAGE = "Use /kos language auto | pt | en",
+    LANG_USAGE = "Use /pvpw language auto | pt | en",
     HELP = {
-        "Commands:",
-        "  /kos config - opens the settings (also in Options > AddOns)",
-        "  /kos list - shows the marked players (with a link to unmark)",
-        "  /kos remove - unmarks your target",
-        "  /kos delete Name - unmarks by name",
-        "  /kos mark - marks your target by hand",
-        "  /kos sound | message | emote - turns the sound, the alert message or the emote on/off",
-        "  /kos minimap - shows/hides the minimap button",
-        "  /kos language auto | pt | en - changes the addon's language",
-        "  /kos test - duel opponents count as enemies (for testing)",
-        "  /kos debug - shows what the addon sees",
+        "Commands (/kos works too if no other addon uses it):",
+        "  /pvpw config - opens the settings (also in Options > AddOns)",
+        "  /pvpw list - shows the marked players (with a link to unmark)",
+        "  /pvpw remove - unmarks your target",
+        "  /pvpw delete Name - unmarks by name",
+        "  /pvpw mark - marks your target by hand",
+        "  /pvpw sound | message | emote - turns the sound, the alert message or the emote on/off",
+        "  /pvpw minimap - shows/hides the minimap button",
+        "  /pvpw language auto | pt | en - changes the addon's language",
+        "  /pvpw test - duel opponents count as enemies (for testing)",
+        "  /pvpw debug - shows what the addon sees",
     },
     -- minimap button and AddOns menu
     TIP_STATUS = "Automatic marking: %s",

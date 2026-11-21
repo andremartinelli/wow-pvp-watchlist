@@ -1,4 +1,4 @@
--- killonsight 1.3.0 (WoW: Forever)
+-- PvP Watchlist 1.4.0 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
 -- Marca quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
 -- Textos em Locales.lua (portugues e ingles). Icone em media/icon.tga.
@@ -8,14 +8,14 @@
 -- SCAN_WINDOW segundos, jogadores inimigos por perto (barras de nome, alvo, foco, mouseover) que estejam em
 -- combate e com VOCE no alvo. Esses sao marcados, a nao ser que voce tenha atacado o jogador antes.
 -- No Forever varios valores ficam "secretos" em combate; tudo que pode vir secreto passa por safe().
--- Configuracoes: Opcoes > AddOns > killonsight (ou /kos config).
+-- Configuracoes: Opcoes > AddOns > PvP Watchlist (ou /pvpw config). /kos tambem, se nenhum outro addon usar.
 
 local ADDON, ns = ...
-ADDON = ADDON or "killonsight"
+ADDON = ADDON or "PvPWatchlist"
 ns = ns or {}
 
-local PREFIX = "|cffff4040[KoS]|r "
-local ICON_PATH = "Interface\\AddOns\\killonsight\\media\\icon"
+local ICON_PATH = "Interface\\AddOns\\" .. ADDON .. "\\media\\icon"
+local LINK_PREFIX = "addon:" .. ADDON .. ":unmark:"   -- links "[desmarcar]" do chat
 local SCAN_WINDOW = 3        -- segundos procurando o atacante depois de um golpe (pega o ladino que sai da furtividade)
 local SCAN_STEP = 0.2        -- intervalo entre as procuras dentro dessa janela
 local RECOUNT_GAP = 120      -- um novo ataque do mesmo jogador so soma depois de 2 min
@@ -90,7 +90,7 @@ local LANGS = {
     { id = "auto", labelKey = "LANG_AUTO" }, { id = "ptBR", label = "Português" }, { id = "enUS", label = "English" },
 }
 
-local db, S                -- killonsightDB e killonsightDB.settings
+local db, S                -- PvPWatchlistDB e PvPWatchlistDB.settings
 local scanUntil, nextScan = 0, 0
 local myAttacks = {}       -- chave do jogador -> GetTime() do seu ultimo ataque a ele
 local ui = { refreshers = {} }
@@ -116,12 +116,12 @@ local function safe(fn, ...)
 end
 
 local function say(msg)
-    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff4040[" .. L.TAG .. "]|r " .. msg)
 end
 
 local function debug(msg)
     if S and S.debug then
-        DEFAULT_CHAT_FRAME:AddMessage("|cff888888[KoS debug] " .. msg .. "|r")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff888888[" .. L.TAG .. " debug] " .. msg .. "|r")
     end
 end
 
@@ -305,7 +305,7 @@ end
 -- ---------------------------------------------------------------- marcar / desmarcar
 
 local function unmarkLink(key)
-    return "|Haddon:killonsight:unmark:" .. key .. "|h|cff66bbff[" .. L.UNMARK_LINK .. "]|r|h"
+    return "|H" .. LINK_PREFIX .. key .. "|h|cff66bbff[" .. L.UNMARK_LINK .. "]|r|h"
 end
 
 local function mark(unit, key, display, guid, how)
@@ -355,9 +355,9 @@ end
 -- Links "[desmarcar]" do chat.
 local lastLink, lastLinkAt = nil, 0
 local function handleLink(link)
-    if type(link) ~= "string" then return end
-    local key = link:match("^addon:killonsight:unmark:(.+)$")
-    if not key then return end
+    if type(link) ~= "string" or link:sub(1, #LINK_PREFIX) ~= LINK_PREFIX then return end
+    local key = link:sub(#LINK_PREFIX + 1)
+    if key == "" then return end
     local t = GetTime()
     if lastLink == link and t - lastLinkAt < 0.5 then return end -- os dois ganchos abaixo podem chamar
     lastLink, lastLinkAt = link, t
@@ -692,7 +692,7 @@ local function buildOptions()
     end
     local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("|T" .. ICON_PATH .. ":20|t killonsight")
+    title:SetText("|T" .. ICON_PATH .. ":20|t " .. L.TITLE)
     local sub = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
     sub:SetText(L.SUBTITLE)
@@ -743,7 +743,7 @@ local function buildOptions()
     y = checkbox(content, y, L.OPT_DEBUG, "debug")
     panel:SetScript("OnShow", refreshUI)
     for _, r in ipairs(ui.refreshers) do pcall(r) end
-    local category = Settings.RegisterCanvasLayoutCategory(panel, "killonsight")
+    local category = Settings.RegisterCanvasLayoutCategory(panel, L.TITLE)
     Settings.RegisterAddOnCategory(category)
     ui.category = category
     buildListPage(category)
@@ -784,7 +784,7 @@ end
 local function launcherTooltip(owner, canDrag)
     if not GameTooltip then return end
     GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
-    GameTooltip:SetText("|T" .. ICON_PATH .. ":16|t killonsight", 1, 1, 1)
+    GameTooltip:SetText("|T" .. ICON_PATH .. ":16|t " .. L.TITLE, 1, 1, 1)
     GameTooltip:AddLine(string.format(L.TIP_STATUS, onOff(S.enabled)), 1, 0.82, 0)
     GameTooltip:AddLine(string.format(L.TIP_COUNT, markedCount()), 1, 0.82, 0)
     GameTooltip:AddLine(L.TIP_LEFT, 0.8, 0.8, 0.8)
@@ -800,9 +800,9 @@ local function launcherClick(button)
 end
 
 -- Menu de addons ao lado do minimapa (linhas AddonCompartmentFunc no .toc). Precisam ser globais.
-function killonsight_OnAddonCompartmentClick(_, button) launcherClick(button) end
-function killonsight_OnAddonCompartmentEnter(_, menuButton) if db then launcherTooltip(menuButton, false) end end
-function killonsight_OnAddonCompartmentLeave() if GameTooltip then GameTooltip:Hide() end end
+function PvPWatchlist_OnAddonCompartmentClick(_, button) launcherClick(button) end
+function PvPWatchlist_OnAddonCompartmentEnter(_, menuButton) if db then launcherTooltip(menuButton, false) end end
+function PvPWatchlist_OnAddonCompartmentLeave() if GameTooltip then GameTooltip:Hide() end end
 
 local atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 
@@ -834,7 +834,7 @@ end
 
 local function buildMinimapButton()
     if ui.minimapButton or not Minimap then return end
-    local b = CreateFrame("Button", "killonsightMinimapButton", Minimap)
+    local b = CreateFrame("Button", "PvPWatchlistMinimapButton", Minimap)
     b:SetSize(31, 31)
     b:SetFrameStrata("MEDIUM")
     b:SetFrameLevel(8)
@@ -927,8 +927,26 @@ local COMMANDS = {
 local LANG_ARGS = { auto = "auto", pt = "ptBR", ptbr = "ptBR", ["português"] = "ptBR", portugues = "ptBR",
     en = "enUS", enus = "enUS", english = "enUS", ingles = "enUS", ["inglês"] = "enUS" }
 
-SLASH_KILLONSIGHT1 = "/kos"
-SlashCmdList.KILLONSIGHT = function(msg)
+-- /kos vira atalho so se nenhum outro addon (por exemplo o Kill on Sight) ja usar. Roda no PLAYER_LOGIN,
+-- quando os outros addons ja registraram os comandos deles.
+local function kosOwner()
+    for k, v in pairs(_G) do
+        if type(k) == "string" and type(v) == "string" and k:find("^SLASH_.+%d$")
+            and not k:find("^SLASH_PVPWATCHLIST%d") and string.lower(v) == "/kos" then
+            return k
+        end
+    end
+end
+
+local function registerKosAlias()
+    local ok, owner = pcall(kosOwner)
+    if not ok then return end
+    if owner then debug(string.format(L.DBG_KOS_TAKEN, owner)) return end
+    SLASH_PVPWATCHLIST2 = "/kos"
+end
+
+SLASH_PVPWATCHLIST1 = "/pvpw"
+SlashCmdList.PVPWATCHLIST = function(msg)
     msg = (msg or ""):gsub("^%s+", ""):gsub("%s+$", "")
     local cmd, rest = msg:match("^(%S*)%s*(.-)$")
     cmd = COMMANDS[string.lower(cmd or "")]
@@ -990,9 +1008,9 @@ end)
 
 f:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
-        if ... ~= "killonsight" then return end
-        killonsightDB = killonsightDB or {}
-        db = killonsightDB
+        if ... ~= ADDON then return end
+        PvPWatchlistDB = PvPWatchlistDB or {}
+        db = PvPWatchlistDB
         db.players = db.players or {}
         db.settings = db.settings or {}
         S = db.settings
@@ -1003,12 +1021,14 @@ f:SetScript("OnEvent", function(self, event, ...)
         local ok, err = pcall(buildOptions)
         if not ok then debug(string.format(L.DBG_OPTIONS_FAILED, tostring(err))) end
         local okM, errM = pcall(buildMinimapButton)
-        if not okM then debug("minimap: " .. tostring(errM)) end
+        if not okM then debug(string.format(L.DBG_MINIMAP_FAILED, tostring(errM))) end
         say(string.format(L.LOADED, markedCount()))
         return
     end
     if not db then return end
-    if event == "UNIT_COMBAT" then
+    if event == "PLAYER_LOGIN" then
+        registerKosAlias()
+    elseif event == "UNIT_COMBAT" then
         local unit, action = ...
         if unit ~= "player" then return end
         if isSecret(action) or ATTACK_ACTIONS[action] then
@@ -1040,6 +1060,7 @@ f:SetScript("OnEvent", function(self, event, ...)
 end)
 
 f:RegisterEvent("ADDON_LOADED")
+f:RegisterEvent("PLAYER_LOGIN")
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_ENTER_COMBAT")

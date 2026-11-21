@@ -1,0 +1,8 @@
+package-as: PvPWatchlist
+
+ignore:
+  - tests
+  - README.md
+  - CURSEFORGE.md
+  - media/icon.svg
+  - .github

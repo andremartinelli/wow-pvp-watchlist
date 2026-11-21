@@ -1,0 +1,17 @@
+## Interface: 16001
+## Title: PvP Watchlist
+## Notes: Marks whoever attacks you first in world PvP and warns you when they show up again. /pvpw
+## Notes-ptBR: Marca quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo. /pvpw
+## Author: Andre (feito com o Claude)
+## Version: 1.4.0
+## SavedVariables: PvPWatchlistDB
+## IconTexture: Interface\AddOns\PvPWatchlist\media\icon
+## AddonCompartmentFunc: PvPWatchlist_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: PvPWatchlist_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: PvPWatchlist_OnAddonCompartmentLeave
+## Category: PvP
+## X-Category: PvP
+## X-License: MIT
+## X-Website: https://github.com/andremartinelli/wow-pvp-watchlist
+Locales.lua
+PvPWatchlist.lua

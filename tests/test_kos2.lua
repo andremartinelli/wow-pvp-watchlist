@@ -1,4 +1,4 @@
--- Simulacao da API do WoW para testar o killonsight (deteccao + tela de configuracoes) fora do jogo, em portugues.
+-- Simulacao da API do WoW para testar o PvP Watchlist (deteccao + tela de configuracoes) fora do jogo, em portugues.
 local clock = 1000
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 issecretvalue = function(v) return v == SECRET end
@@ -102,7 +102,7 @@ hooksecurefunc = function(name, hook) local orig = _G[name]; _G[name] = function
 
 local function fire(e, ...) eventFrame.scripts.OnEvent(eventFrame, e, ...) end
 local function tick(s) local stop = clock + s; while clock < stop do clock = clock + 0.1; eventFrame.scripts.OnUpdate(eventFrame, 0.1) end end
-local function slash(msg) SlashCmdList.KILLONSIGHT(msg) end
+local function slash(msg) SlashCmdList.PVPWATCHLIST(msg) end
 local function has(pat, list) for _, m in ipairs(list or out) do if m:find(pat) then return true end end return false end
 local fails = 0
 local function check(cond, label) print((cond and "OK   " or "FALHA ") .. label); if not cond then fails = fails + 1 end end
@@ -115,13 +115,13 @@ local function hit() fire("UNIT_COMBAT", "player", "WOUND", "", 50, 1); tick(1) 
 units.player = { name = "Jogador", isPlayer = true, level = 30 }
 dofile = nil
 local ns = {}
-assert(loadfile("Locales.lua"))("killonsight", ns)
-local chunk = assert(loadfile("killonsight.lua"))
-chunk("killonsight", ns)
-fire("ADDON_LOADED", "killonsight")
-local S = killonsightDB.settings
+assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
+local chunk = assert(loadfile("PvPWatchlist.lua"))
+chunk("PvPWatchlist", ns)
+fire("ADDON_LOADED", "PvPWatchlist")
+local S = PvPWatchlistDB.settings
 local main, list = categories[1], categories[2]
-check(main and main.name == "killonsight", "tela principal registrada em Opcoes > AddOns")
+check(main and main.name == "PvP Watchlist", "tela principal registrada em Opcoes > AddOns como PvP Watchlist")
 check(list and list.name == "Marcados", "subpagina Marcados registrada")
 local boxes, sliders, buttons = created.CheckButton, created.Slider, created.Button
 check(#boxes == 12 and #sliders == 3, "12 caixas e 3 controles deslizantes")
@@ -217,7 +217,7 @@ tip.GetUnit = function() return "Ganker", "nameplate4" end
 tip.AddLine = function(self, s) table.insert(self.lines, s) end
 GameTooltip = tip
 tooltipHook(tip)
-check(tip.lines[1] and tip.lines[1]:find("KoS: te atacou 2 vezes"), "linha no tooltip: " .. tostring(tip.lines[1]))
+check(tip.lines[1] and tip.lines[1]:find("PvP Watchlist: te atacou 2 vezes"), "linha no tooltip: " .. tostring(tip.lines[1]))
 setBox(B.tooltip, false); tip.lines = {}; tooltipHook(tip)
 check(#tip.lines == 0, "tooltip desligado")
 

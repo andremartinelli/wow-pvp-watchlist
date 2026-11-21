@@ -1,4 +1,4 @@
--- Simulacao minima da API do WoW para testar o killonsight fora do jogo.
+-- Simulacao minima da API do WoW para testar o PvP Watchlist fora do jogo.
 local clock = 1000
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 issecretvalue = function(v) return v == SECRET end
@@ -63,7 +63,7 @@ hooksecurefunc = function(name, hook) local orig = _G[name]; _G[name] = function
 
 local function fire(e, ...) frame.scripts.OnEvent(frame, e, ...) end
 local function tick(seconds) local stop = clock + seconds; while clock < stop do clock = clock + 0.1; frame.scripts.OnUpdate(frame, 0.1) end end
-local function slash(msg) SlashCmdList.KILLONSIGHT(msg) end
+local function slash(msg) SlashCmdList.PVPWATCHLIST(msg) end
 local function has(pat) for _, m in ipairs(out) do if m:find(pat) then return true end end return false end
 local fails = 0
 local function check(cond, label) print((cond and "OK   " or "FALHA ") .. label); if not cond then fails = fails + 1 end end
@@ -72,11 +72,16 @@ local function removePlate(token) fire("NAME_PLATE_UNIT_REMOVED", token); units[
 
 units.player = { name = "Jogador", isPlayer = true }
 local ns = {}
-assert(loadfile("Locales.lua"))("killonsight", ns)
-local chunk = assert(loadfile("killonsight.lua"))
-chunk("killonsight", ns)
+assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
+local chunk = assert(loadfile("PvPWatchlist.lua"))
+chunk("PvPWatchlist", ns)
 fire("ADDON_LOADED", "killonsight")
-check(has("carregado: 0"), "carrega com 0 marcados")
+check(not PvPWatchlistDB, "ignora o ADDON_LOADED de outro addon (killonsight)")
+fire("ADDON_LOADED", "PvPWatchlist")
+check(has("^%[PvPW%] carregado: 0"), "carrega com 0 marcados e prefixo [PvPW]")
+check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/pvpw registrado; /kos so depois do login")
+fire("PLAYER_LOGIN")
+check(SLASH_PVPWATCHLIST2 == "/kos", "/kos livre: vira atalho no login")
 
 print("-- 1. Horda te ataca primeiro")
 addPlate("nameplate1", { name = "Ganker", guid = "Player-1-AAA", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true, class = "Ladino", level = 32, guild = "Horda Malvada" })
@@ -144,6 +149,8 @@ out = {}; slash("lista"); check(has("3 marcado"), "lista mostra 3 marcados")
 units.target = { name = "Ganker", guid = "Player-1-AAA", isPlayer = true, enemy = true, canAttack = true }
 out = {}; slash("tirar"); check(has("Ganker desmarcado"), "/kos tirar desmarca o alvo")
 out = {}; SetItemRef("addon:killonsight:unmark:sombra", "[desmarcar]", "LeftButton")
+check(not has("desmarcado"), "link do addon antigo (killonsight) e ignorado")
+out = {}; SetItemRef("addon:PvPWatchlist:unmark:sombra", "[desmarcar]", "LeftButton")
 check(has("Sombra desmarcado"), "link [desmarcar] funciona")
 out = {}; slash("apagar amigo"); check(has("Amigo desmarcado"), "/kos apagar Nome")
 out = {}; slash("lista"); check(has("Ninguém marcado"), "lista vazia no fim")

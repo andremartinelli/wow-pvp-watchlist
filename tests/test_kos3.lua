@@ -1,4 +1,5 @@
--- Simulacao da API do WoW para testar o killonsight 1.3 em ingles, o botao do minimapa, o menu de addons e a troca de idioma.
+-- Simulacao da API do WoW para testar o PvP Watchlist em ingles, o botao do minimapa, o menu de addons, a troca de idioma
+-- e o atalho /kos quando outro addon ja usa esse comando.
 local clock = 1000
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 issecretvalue = function(v) return v == SECRET end
@@ -105,7 +106,7 @@ hooksecurefunc = function(name, hook) local orig = _G[name]; _G[name] = function
 
 local function fire(e, ...) eventFrame.scripts.OnEvent(eventFrame, e, ...) end
 local function tick(s) local stop = clock + s; while clock < stop do clock = clock + 0.1; eventFrame.scripts.OnUpdate(eventFrame, 0.1) end end
-local function slash(msg) SlashCmdList.KILLONSIGHT(msg) end
+local function slash(msg) SlashCmdList.PVPWATCHLIST(msg) end
 local function has(pat, list) for _, m in ipairs(list or out) do if m:find(pat) then return true end end return false end
 local fails = 0
 local function check(cond, label) print((cond and "OK   " or "FALHA ") .. label); if not cond then fails = fails + 1 end end
@@ -132,21 +133,27 @@ local function textHas(pat) for _, s in ipairs(TEXTS) do if type(s) == "string" 
 
 units.player = { name = "Jogador", isPlayer = true, level = 30 }
 local ns = {}
-assert(loadfile("Locales.lua"))("killonsight", ns)
-local chunk = assert(loadfile("killonsight.lua"))
-chunk("killonsight", ns)
-fire("ADDON_LOADED", "killonsight")
-local S = killonsightDB.settings
-check(has("loaded: 0 marked"), "cliente em ingles: mensagem de carregamento em ingles")
+SLASH_KILLONSIGHT1 = "/kos" -- outro addon (o killonsight antigo ou o Kill on Sight) ja usa /kos
+assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
+local chunk = assert(loadfile("PvPWatchlist.lua"))
+chunk("PvPWatchlist", ns)
+fire("ADDON_LOADED", "PvPWatchlist")
+local S = PvPWatchlistDB.settings
+check(has("^%[PvPW%] loaded: 0 marked"), "cliente em ingles: mensagem de carregamento em ingles")
 local main, list = categories[1], categories[2]
-check(list and list.name == "Marked", "subpagina em ingles: Marked")
+check(main and main.name == "PvP Watchlist" and list and list.name == "Marked", "tela PvP Watchlist e subpagina em ingles: Marked")
 check(textHas("^Detection$") and textHas("^Automatically mark whoever attacks me$"), "tela de configuracoes em ingles")
-check(textHas("media\\icon"), "icone do addon no titulo da tela")
+check(textHas("AddOns\\PvPWatchlist\\media\\icon") and textHas("PvP Watchlist$"), "icone e nome PvP Watchlist no titulo da tela")
+S.debug = true; out = {}
+fire("PLAYER_LOGIN")
+check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/kos ocupado: nao registra o atalho")
+check(has("/kos is already used by another addon %(SLASH_KILLONSIGHT1%): use /pvpw"), "debug explica que /kos esta ocupado")
+S.debug = false
 check(#created.CheckButton == 12, "12 caixas (com a do minimapa)")
 
 print("-- botao do minimapa")
 local mm
-for _, b in ipairs(created.Button) do if b.name == "killonsightMinimapButton" then mm = b end end
+for _, b in ipairs(created.Button) do if b.name == "PvPWatchlistMinimapButton" then mm = b end end
 check(mm and mm.parent == Minimap and mm.shown, "botao criado no minimapa e visivel")
 check(mm.point and mm.point[2] == Minimap, "botao posicionado em volta do minimapa")
 -- 200 graus: x = cos(200)*75, y = sin(200)*75
@@ -177,12 +184,12 @@ check(math.abs(mm.point[4]) < 0.01 and math.abs(mm.point[5] - 75) < 0.01, "botao
 
 print("-- menu de addons (compartment)")
 categories.opened = nil
-killonsight_OnAddonCompartmentClick("killonsight", "LeftButton")
+PvPWatchlist_OnAddonCompartmentClick("PvPWatchlist", "LeftButton")
 check(categories.opened == 42, "menu de addons: clique abre as configuracoes")
 tipLines = {}
-killonsight_OnAddonCompartmentEnter("killonsight", stub("MenuButton"))
-check(tipHas("killonsight") and tipHas("Automatic marking: on") and not tipHas("Drag"), "menu de addons: tooltip sem a dica de arrastar")
-killonsight_OnAddonCompartmentLeave()
+PvPWatchlist_OnAddonCompartmentEnter("PvPWatchlist", stub("MenuButton"))
+check(tipHas("PvP Watchlist") and tipHas("Automatic marking: on") and not tipHas("Drag"), "menu de addons: tooltip sem a dica de arrastar")
+PvPWatchlist_OnAddonCompartmentLeave()
 
 print("-- esconder o botao")
 out = {}; slash("minimap")
@@ -194,8 +201,8 @@ check(S.minimap == true and mm.shown == true, "caixa Show minimap button mostra 
 print("-- comandos nos dois idiomas")
 out = {}; slash("list"); check(has("1 marked, newest first:"), "/kos list")
 out = {}; slash("lista"); check(has("1 marked, newest first:"), "/kos lista tambem funciona em ingles")
-out = {}; slash(""); check(has("Commands:") and has("/kos language auto | pt | en"), "ajuda em ingles")
-out = {}; slash("language xx"); check(has("Use /kos language auto | pt | en"), "idioma invalido mostra o uso")
+out = {}; slash(""); check(has("Commands") and has("/pvpw language auto | pt | en"), "ajuda em ingles")
+out = {}; slash("language xx"); check(has("Use /pvpw language auto | pt | en"), "idioma invalido mostra o uso")
 
 print("-- troca de idioma")
 out = {}; slash("language pt")
@@ -206,11 +213,11 @@ tip.GetUnit = function() return "Ganker", "nameplate1" end
 tip.AddLine = function(self, s) table.insert(self.lines, s) end
 GameTooltip = tip
 tooltipHook(tip)
-check(tip.lines[1] and tip.lines[1]:find("^KoS: te atacou 1 vez"), "tooltip do jogador em portugues: " .. tostring(tip.lines[1]))
+check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: te atacou 1 vez"), "tooltip do jogador em portugues: " .. tostring(tip.lines[1]))
 out = {}; slash("idioma auto")
 check(S.language == "auto" and has("Language: Automatic"), "/kos idioma auto volta ao idioma do jogo (ingles)")
 tip.lines = {}; tooltipHook(tip)
-check(tip.lines[1] and tip.lines[1]:find("^KoS: attacked you once, last time on %a%a%a %d%d"), "tooltip em ingles com data por extenso: " .. tostring(tip.lines[1]))
+check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: attacked you once, last time on %a%a%a %d%d"), "tooltip em ingles com data por extenso: " .. tostring(tip.lines[1]))
 -- botao de idioma na tela: auto -> Português
 local langBtn = created.Button[6]
 out = {}; click(langBtn)
