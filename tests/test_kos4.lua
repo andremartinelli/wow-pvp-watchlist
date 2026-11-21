@@ -130,18 +130,37 @@ end
 local function U(name, realm) return table.concat({ "U1", name, realm or "Reino" }, SEP) end
 local function addonMsg(text, kind, sender) fire("CHAT_MSG_ADDON", "PvPW", text, kind, sender, "Jogador-Reino") end
 
--- lista que ja existia antes da 1.5.0 (com o X escolhido como icone da sua lista)
+-- Dados que ja existiam (mesmos campos da lista migrada do killonsight), com configuracoes fora do padrao.
+-- Nenhuma atualizacao pode perder ou mudar nada disso: e conferido logo depois de carregar e no fim do teste.
 units.player = { name = "Jogador", isPlayer = true, level = 30 }
-PvPWatchlistDB = { settings = { icon = 7 }, players = {
-  velho = { name = "Velho", count = 2, first = time() - 900, last = time() - 100, where = "Vale", how = "alvo" },
-  incerto = { name = "Incerto", count = 1, first = time() - 900, last = time() - 100, where = "Vale", how = "unico inimigo por perto" },
+PvPWatchlistDB = { settings = { icon = 7, iconSize = 40, myAttackMemory = 90, minimap = false, msg = true }, players = {
+  velho = { name = "Velho", guid = "Player-1-OLD", class = "Bruxo", level = 33, guild = "Os Antigos", count = 2,
+    first = time() - 900, last = time() - 100, where = "Vale", how = "alvo", alertAt = time() - 100, seen = time() - 50 },
+  incerto = { name = "Incerto", guid = "Player-1-UNS", class = "Mago", level = 29, count = 1,
+    first = time() - 900, last = time() - 100, where = "Vale", how = "unico inimigo por perto", alertAt = time() - 100 },
 } }
+local function deepcopy(t) if type(t) ~= "table" then return t end local c = {} for k, v in pairs(t) do c[k] = deepcopy(v) end return c end
+-- Lista o que estava em "old" e sumiu ou mudou em "new" (campos novos em "new" podem existir).
+local function lost(new, old, path, out)
+  out = out or {}
+  for k, v in pairs(old) do
+    local p = path .. "." .. tostring(k)
+    if type(v) == "table" then
+      if type(new[k]) ~= "table" then table.insert(out, p) else lost(new[k], v, p, out) end
+    elseif new[k] ~= v then table.insert(out, p .. " (" .. tostring(v) .. " -> " .. tostring(new[k]) .. ")") end
+  end
+  return out
+end
+local before = deepcopy(PvPWatchlistDB)
 local ns = {}
 assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
 assert(loadfile("PvPWatchlist.lua"))("PvPWatchlist", ns)
 assert(loadfile("Share.lua"))("PvPWatchlist", ns)
 fire("ADDON_LOADED", "PvPWatchlist")
 local DB, S = PvPWatchlistDB, PvPWatchlistDB.settings
+local gone = lost(DB, before, "db")
+check(#gone == 0, "carregar a versao nova nao perde nem muda nada dos dados salvos" .. (#gone > 0 and (": " .. table.concat(gone, ", ")) or ""))
+check(S.shareGuild == true and S.friendsIcon == 7, "e so acrescenta as configuracoes novas")
 check(prefixes.PvPW, "prefixo de mensagens PvPW registrado")
 check(S.icon == 7 and S.friendsIcon == 7 and S.guildIcon == 4, "o X escolhido para a sua lista continua; amigos X e guilda triangulo por padrao")
 S.icon = 8
@@ -334,5 +353,9 @@ local parts = {}
 if longMsg then for p in (longMsg .. SEP):gmatch("(.-)" .. SEP) do table.insert(parts, p) end end
 check(longMsg and allShort(), "mensagem com ate 255 bytes")
 check(parts[2] == string.rep("N", 40) and parts[10] == "x" .. string.rep("ã", 24), "nome cortado em 40 e lugar cortado sem quebrar o ã")
+
+print("-- no fim de tudo, a sua lista antiga continua intacta")
+local goneEnd = lost(DB.players, before.players, "players")
+check(#goneEnd == 0, "login, troca, bloqueio, expiracao e envios nao tocaram nos seus marcados" .. (#goneEnd > 0 and (": " .. table.concat(goneEnd, ", ")) or ""))
 
 print(fails == 0 and "TUDO OK" or (fails .. " FALHA(S)"))
