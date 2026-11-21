@@ -12,6 +12,6 @@
 ## Category: PvP
 ## X-Category: PvP
 ## X-License: MIT
-## X-Website: https://github.com/andremartinelli/killonsight
+## X-Website: https://github.com/andremartinelli/wow-pvp-watchlist
 Locales.lua
 killonsight.lua

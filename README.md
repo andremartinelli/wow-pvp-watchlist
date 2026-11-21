@@ -26,7 +26,7 @@ Por isso ele pode errar ou deixar alguém passar. Para corrigir, use o link **[d
 
 1. Baixe o ZIP pelo botão **Code > Download ZIP**.
 2. Extraia em `World of Warcraft\_forever_\Interface\AddOns\`.
-3. Renomeie a pasta `killonsight-main` para `killonsight`.
+3. Renomeie a pasta `wow-pvp-watchlist-main` para `killonsight` (o jogo só carrega o addon com esse nome de pasta).
 4. Abra o jogo, ou dê `/reload` se ele já estiver aberto.
 
 ## Comandos
@@ -83,7 +83,7 @@ Cada teste termina com `TUDO OK` quando tudo passa.
 
 **How it works:** Forever blocks the combat log for addons, so no addon knows who dealt each hit. When you get hit or enter combat, killonsight looks for 3 seconds for nearby enemy players who are in combat and targeting you. If the game hides who each one is targeting, it only marks when there is exactly one possible enemy. It can miss or mismark someone; fix it with the **[unmark]** chat link, the **Marked** list in the settings, or `/kos mark` with the player targeted.
 
-**Install:** download the ZIP (**Code > Download ZIP**), extract it to `World of Warcraft\_forever_\Interface\AddOns\` and rename the `killonsight-main` folder to `killonsight`.
+**Install:** download the ZIP (**Code > Download ZIP**), extract it to `World of Warcraft\_forever_\Interface\AddOns\` and rename the `wow-pvp-watchlist-main` folder to `killonsight` (the game only loads the addon from a folder with that name).
 
 **Commands:** type `/kos` in game for the list. Every command works in English and Portuguese (see the table above).
 
