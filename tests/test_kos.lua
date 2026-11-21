@@ -75,6 +75,7 @@ local ns = {}
 assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
 local chunk = assert(loadfile("PvPWatchlist.lua"))
 chunk("PvPWatchlist", ns)
+assert(loadfile("Share.lua"))("PvPWatchlist", ns) -- sem API de mensagens de addon aqui: o compartilhamento fica parado
 fire("ADDON_LOADED", "killonsight")
 check(not PvPWatchlistDB, "ignora o ADDON_LOADED de outro addon (killonsight)")
 fire("ADDON_LOADED", "PvPWatchlist")

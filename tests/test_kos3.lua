@@ -137,6 +137,7 @@ SLASH_KILLONSIGHT1 = "/kos" -- outro addon (o killonsight antigo ou o Kill on Si
 assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
 local chunk = assert(loadfile("PvPWatchlist.lua"))
 chunk("PvPWatchlist", ns)
+assert(loadfile("Share.lua"))("PvPWatchlist", ns)
 fire("ADDON_LOADED", "PvPWatchlist")
 local S = PvPWatchlistDB.settings
 check(has("^%[PvPW%] loaded: 0 marked"), "cliente em ingles: mensagem de carregamento em ingles")
@@ -149,7 +150,7 @@ fire("PLAYER_LOGIN")
 check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/kos ocupado: nao registra o atalho")
 check(has("/kos is already used by another addon %(SLASH_KILLONSIGHT1%): use /pvpw"), "debug explica que /kos esta ocupado")
 S.debug = false
-check(#created.CheckButton == 12, "12 caixas (com a do minimapa)")
+check(#created.CheckButton == 17, "17 caixas (com a do minimapa e as 5 de compartilhamento)")
 
 print("-- botao do minimapa")
 local mm

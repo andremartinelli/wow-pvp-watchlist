@@ -1,7 +1,9 @@
--- PvP Watchlist 1.4.0 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
+-- PvP Watchlist 1.5.0 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
 -- Marca quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
--- Textos em Locales.lua (portugues e ingles). Icone em media/icon.tga.
+-- Textos em Locales.lua (portugues e ingles). Icones em media/ (icon.tga e guild.tga).
+-- A troca de marcados com amigos e guilda fica em Share.lua; aqui ficam as listas recebidas (db.shared),
+-- os icones por origem (caveira = sua lista, X = amigos, G = guilda), os avisos e a tela.
 --
 -- O Forever bloqueia COMBAT_LOG_EVENT_UNFILTERED para addons, entao o addon nao sabe quem deu cada golpe.
 -- Como funciona: quando voce leva um golpe (UNIT_COMBAT no "player") ou entra em combate, ele procura, por
@@ -15,7 +17,10 @@ ADDON = ADDON or "PvPWatchlist"
 ns = ns or {}
 
 local ICON_PATH = "Interface\\AddOns\\" .. ADDON .. "\\media\\icon"
-local LINK_PREFIX = "addon:" .. ADDON .. ":unmark:"   -- links "[desmarcar]" do chat
+local LINK_BASE = "addon:" .. ADDON .. ":"   -- links do chat: "unmark:<chave>" e "hide:<origem>:<chave>"
+local RAID_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
+local SOURCE_ICONS = { friends = RAID_ICON .. "7", guild = "Interface\\AddOns\\" .. ADDON .. "\\media\\guild" }
+local CIRCLES = { "friends", "guild" }        -- listas recebidas, na ordem de prioridade depois da sua
 local SCAN_WINDOW = 3        -- segundos procurando o atacante depois de um golpe (pega o ladino que sai da furtividade)
 local SCAN_STEP = 0.2        -- intervalo entre as procuras dentro dessa janela
 local RECOUNT_GAP = 120      -- um novo ataque do mesmo jogador so soma depois de 2 min
@@ -46,6 +51,11 @@ local DEFAULTS = {
     minimap = true,           -- botao no minimapa
     minimapAngle = 200,       -- posicao do botao, em graus a partir da direita (sentido anti-horario)
     language = "auto",        -- "auto" (do jogo), "ptBR" ou "enUS"
+    shareGuild = true,        -- trocar marcados com a guilda (enviar e receber)
+    shareFriends = true,      -- trocar marcados com a lista de amigos
+    shareBnet = false,        -- trocar marcados com amigos do Battle.net
+    sharedAlerts = true,      -- mensagem no chat quando aparece alguem marcado por amigos ou guilda
+    sharedCenter = false,     -- aviso grande no centro tambem para eles
 }
 
 -- ---------------------------------------------------------------- idioma
@@ -71,12 +81,19 @@ local L = setmetatable({}, { __index = function(_, k)
 end })
 lang = pickLanguage("auto")
 
+-- Icones para a sua lista. O X (7) fica reservado para os marcados dos amigos e o G para os da guilda.
 local ICONS = {
-    { id = 8, labelKey = "ICON_SKULL" }, { id = 7, labelKey = "ICON_CROSS" }, { id = 1, labelKey = "ICON_STAR" },
+    { id = 8, labelKey = "ICON_SKULL" }, { id = 1, labelKey = "ICON_STAR" },
     { id = 2, labelKey = "ICON_CIRCLE" }, { id = 3, labelKey = "ICON_DIAMOND" }, { id = 4, labelKey = "ICON_TRIANGLE" },
     { id = 5, labelKey = "ICON_MOON" }, { id = 6, labelKey = "ICON_SQUARE" },
 }
-for _, e in ipairs(ICONS) do e.icon = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. e.id end
+for _, e in ipairs(ICONS) do e.icon = RAID_ICON .. e.id end
+-- Filtro da pagina "Marcados".
+local LIST_SOURCES = {
+    { id = "mine", labelKey = "FILTER_MINE" },
+    { id = "friends", labelKey = "FILTER_FRIENDS", icon = SOURCE_ICONS.friends },
+    { id = "guild", labelKey = "FILTER_GUILD", icon = SOURCE_ICONS.guild },
+}
 local EMOTES = {
     { id = "NO", label = "/no" }, { id = "RUDE", label = "/rude" }, { id = "LAUGH", label = "/laugh" },
     { id = "CHICKEN", label = "/chicken" }, { id = "SPIT", label = "/spit" }, { id = "POINT", label = "/point" },
@@ -197,6 +214,47 @@ local function findEntry(unit)
     return e, key, display, guid
 end
 
+-- Origem ligada nas configuracoes? Amigos vale para a lista de amigos e para o Battle.net.
+local function circleOn(circle)
+    if circle == "guild" then return S.shareGuild end
+    return S.shareFriends or S.shareBnet
+end
+
+local function circleLabel(circle) return circle == "guild" and L.SRC_GUILD or L.SRC_FRIENDS end
+
+-- Marcacao recebida de amigos ou da guilda (nil se oculta, sem dados, desligada ou de outro personagem).
+local function sharedEntry(circle, key, guid)
+    if not circleOn(circle) then return nil end
+    local list = db.shared and db.shared[circle]
+    local e = list and list[key]
+    if not e or e.hidden or not e.last then return nil end
+    if e.guid and guid and e.guid ~= guid then return nil end
+    return e
+end
+
+-- Todas as marcacoes de um jogador inimigo, da mais importante para a menos: a sua, amigos, guilda.
+local function marksFor(unit)
+    local out = {}
+    if not isEnemyPlayer(unit) then return out end
+    local key, _, guid = unitInfo(unit)
+    if not key then return out end
+    local own = db.players[key]
+    if own and not (own.guid and guid and own.guid ~= guid) then table.insert(out, { e = own, source = "mine", key = key }) end
+    for _, c in ipairs(CIRCLES) do
+        local e = sharedEntry(c, key, guid)
+        if e then table.insert(out, { e = e, source = c, key = key }) end
+    end
+    return out
+end
+
+local function sharedCount(circle)
+    local n = 0
+    for key, e in pairs(db.shared and db.shared[circle] or {}) do
+        if not e.hidden and e.last then n = n + 1 end
+    end
+    return n
+end
+
 local function describe(e)
     local parts = {}
     if e.class then table.insert(parts, e.class) end
@@ -211,13 +269,17 @@ local function plural(n) return n == 1 and L.TIMES_ONE or string.format(L.TIMES_
 
 local function iconTexture() return findIn(ICONS, S.icon).icon end
 
+-- Icone de cada origem: o escolhido para a sua lista, X para amigos, G para a guilda.
+local function sourceTexture(source) return SOURCE_ICONS[source] or iconTexture() end
+
 local function playAlert(force)
     if not S.sound and not force then return end
     pcall(PlaySound, findIn(SOUNDS, S.soundId).kit(), "Master")
 end
 
-local function centerWarning(text)
-    if not S.center then return end
+-- on = a opcao que liga o aviso (S.center para a sua lista, S.sharedCenter para amigos e guilda).
+local function centerWarning(text, on)
+    if not on then return end
     if RaidNotice_AddMessage and RaidWarningFrame then
         local color = (ChatTypeInfo and ChatTypeInfo["RAID_WARNING"]) or { r = 1, g = 0.2, b = 0.2 }
         if pcall(RaidNotice_AddMessage, RaidWarningFrame, text, color) then return end
@@ -255,8 +317,8 @@ local function plateFor(unit)
     return plate
 end
 
--- e = registro do marcado (mostra o icone) ou nil (esconde).
-local function setIcon(unit, e)
+-- e = registro do marcado (mostra o icone da origem) ou nil (esconde).
+local function setIcon(unit, e, source)
     local plate = plateFor(unit)
     if not plate then return end
     if e then
@@ -269,7 +331,7 @@ local function setIcon(unit, e)
         end
         local size = S.iconSize or 26
         local t = plate.kosSkull
-        t:SetTexture(iconTexture())
+        t:SetTexture(sourceTexture(source))
         t:SetSize(size, size)
         t:ClearAllPoints()
         t:SetPoint("BOTTOM", plate, "TOP", 0, 4)
@@ -290,22 +352,35 @@ local function setIcon(unit, e)
     end
 end
 
+-- A marcacao que aparece no jogador (a sua primeiro), de onde ela veio e a chave.
 local function markedEnemy(unit)
-    if not isEnemyPlayer(unit) then return nil end
-    return (findEntry(unit))
+    local m = marksFor(unit)[1]
+    if m then return m.e, m.source, m.key end
 end
 
 local function refreshPlates()
     for i = 1, MAX_PLATES do
         local u = "nameplate" .. i
-        if safe(UnitExists, u) then setIcon(u, markedEnemy(u)) end
+        if safe(UnitExists, u) then
+            local e, source = markedEnemy(u)
+            setIcon(u, e, source)
+        end
     end
+end
+
+local function refreshAll()
+    refreshPlates()
+    if ui.refreshList then pcall(ui.refreshList) end
 end
 
 -- ---------------------------------------------------------------- marcar / desmarcar
 
 local function unmarkLink(key)
-    return "|H" .. LINK_PREFIX .. key .. "|h|cff66bbff[" .. L.UNMARK_LINK .. "]|r|h"
+    return "|H" .. LINK_BASE .. "unmark:" .. key .. "|h|cff66bbff[" .. L.UNMARK_LINK .. "]|r|h"
+end
+
+local function hideLink(circle, key)
+    return "|H" .. LINK_BASE .. "hide:" .. circle .. ":" .. key .. "|h|cff66bbff[" .. L.HIDE_LINK .. "]|r|h"
 end
 
 local function mark(unit, key, display, guid, how)
@@ -320,12 +395,13 @@ local function mark(unit, key, display, guid, how)
     end
     local zone = safe(GetZoneText) or "?"
     local sub = safe(GetSubZoneText) or ""
-    local cls = safe(UnitClass, unit)
+    local cls, clsFile = safe(UnitClass, unit)
     local lvl = safe(UnitLevel, unit)
     local guild = safe(GetGuildInfo, unit)
     e.name = display
     e.guid = guid or e.guid
     e.class = cls or e.class
+    if type(clsFile) == "string" then e.classFile = clsFile end -- "ROGUE": quem recebe traduz para o idioma dele
     if type(lvl) == "number" and lvl > 0 then e.level = lvl end
     e.guild = guild or e.guild
     e.last = t
@@ -339,8 +415,8 @@ local function mark(unit, key, display, guid, how)
         doEmote(unit)
     end
     playAlert()
-    refreshPlates()
-    if ui.refreshList then pcall(ui.refreshList) end
+    refreshAll()
+    if ns.share then pcall(ns.share.onMark, key, e) end
 end
 
 local function unmark(key)
@@ -348,20 +424,22 @@ local function unmark(key)
     if not e then say(L.NOT_MARKED) return end
     db.players[key] = nil
     say(string.format(L.UNMARKED, e.name or key))
-    refreshPlates()
-    if ui.refreshList then pcall(ui.refreshList) end
+    refreshAll()
+    if ns.share then pcall(ns.share.onUnmark, key, e) end
 end
 
--- Links "[desmarcar]" do chat.
+-- Links "[desmarcar]" e "[ocultar]" do chat.
 local lastLink, lastLinkAt = nil, 0
 local function handleLink(link)
-    if type(link) ~= "string" or link:sub(1, #LINK_PREFIX) ~= LINK_PREFIX then return end
-    local key = link:sub(#LINK_PREFIX + 1)
-    if key == "" then return end
+    if type(link) ~= "string" or link:sub(1, #LINK_BASE) ~= LINK_BASE then return end
     local t = GetTime()
     if lastLink == link and t - lastLinkAt < 0.5 then return end -- os dois ganchos abaixo podem chamar
     lastLink, lastLinkAt = link, t
-    unmark(key)
+    local rest = link:sub(#LINK_BASE + 1)
+    local key = rest:match("^unmark:(.+)$")
+    if key then unmark(key) return end
+    local circle, hidden = rest:match("^hide:(%a+):(.+)$")
+    if circle and ns.share then ns.share.hide(circle, hidden) end
 end
 if EventRegistry and EventRegistry.RegisterCallback then
     pcall(EventRegistry.RegisterCallback, EventRegistry, "SetItemRef", function(_, link) handleLink(link) end, f)
@@ -470,31 +548,49 @@ end
 
 -- ---------------------------------------------------------------- aviso quando um marcado aparece
 
+-- Marcados de amigos e guilda: so mensagem no chat (e, se ligado, o aviso no centro); sem som.
 local function checkUnit(unit, fromPlate)
-    local e = markedEnemy(unit)
-    if fromPlate then setIcon(unit, e) end
+    local e, source, key = markedEnemy(unit)
+    if fromPlate then setIcon(unit, e, source) end
     if not e then return end
+    if source ~= "mine" and not S.sharedAlerts then return end
     local t = time()
     if t - (e.alertAt or 0) < ALERT_GAP then return end
     e.alertAt = t
     e.seen = t
-    playAlert()
-    centerWarning("|T" .. iconTexture() .. ":18|t " .. string.format(L.NEARBY, e.name, plural(e.count or 1)))
+    if source == "mine" then
+        playAlert()
+        centerWarning("|T" .. iconTexture() .. ":18|t " .. string.format(L.NEARBY, e.name, plural(e.count or 1)), S.center)
+        if S.msg then
+            say("|cffffd100" .. L.SPOTTED .. "|r " .. string.format(L.SPOTTED_MSG, describe(e), plural(e.count or 1),
+                day(e.last), e.where or "?"))
+        end
+        return
+    end
+    local label = circleLabel(source)
+    centerWarning("|T" .. sourceTexture(source) .. ":18|t " .. string.format(L.NEARBY_SHARED, e.name, e.by or "?", label),
+        S.sharedCenter)
     if S.msg then
-        say("|cffffd100" .. L.SPOTTED .. "|r " .. string.format(L.SPOTTED_MSG, describe(e), plural(e.count or 1),
-            day(e.last), e.where or "?"))
+        say("|cffffd100" .. L.SPOTTED .. "|r " .. string.format(L.SPOTTED_SHARED_MSG, describe(e), e.by or "?",
+            plural(e.count or 1), label, day(e.last), e.where or "?") .. " " .. hideLink(source, key))
     end
 end
 
--- Linha no tooltip do jogador marcado.
+-- Linhas no tooltip do jogador marcado: a sua e as de amigos e guilda.
 local function onTooltipUnit(tooltip)
     if not S or not S.tooltip then return end
     if GameTooltip and tooltip ~= GameTooltip then return end
     local ok, _, unit = pcall(tooltip.GetUnit, tooltip)
     if not ok or type(unit) ~= "string" or isSecret(unit) then return end
-    local e = markedEnemy(unit)
-    if not e then return end
-    tooltip:AddLine(string.format(L.TOOLTIP_LINE, plural(e.count or 1), day(e.last), e.where or "?"), 1, 0.3, 0.3, true)
+    for _, m in ipairs(marksFor(unit)) do
+        local e = m.e
+        if m.source == "mine" then
+            tooltip:AddLine(string.format(L.TOOLTIP_LINE, plural(e.count or 1), day(e.last), e.where or "?"), 1, 0.3, 0.3, true)
+        else
+            tooltip:AddLine(string.format(L.TOOLTIP_SHARED, circleLabel(m.source), e.by or "?", plural(e.count or 1),
+                day(e.last), e.where or "?"), 1, 0.6, 0.3, true)
+        end
+    end
 end
 if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
     pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Unit, onTooltipUnit)
@@ -649,9 +745,31 @@ local function buildListPage(category)
     nextB:SetSize(90, 22)
     nextB:SetPoint("LEFT", prev, "RIGHT", 8, 0)
     nextB:SetText(L.BTN_NEXT)
+    -- Filtro: sua lista, amigos ou guilda (clique: proximo; botao direito: anterior).
+    ui.source = "mine"
+    local filter = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
+    filter:SetSize(170, 22)
+    filter:SetPoint("TOPLEFT", 440, -14)
+    filter:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    local function showFilter() filter:SetText(labelOf(findIn(LIST_SOURCES, ui.source))) end
+    filter:SetScript("OnClick", function(_, button)
+        local _, i = findIn(LIST_SOURCES, ui.source)
+        i = i + ((button == "RightButton") and -1 or 1)
+        if i > #LIST_SOURCES then i = 1 elseif i < 1 then i = #LIST_SOURCES end
+        ui.source, ui.page = LIST_SOURCES[i].id, 1
+        showFilter()
+        ui.refreshList()
+    end)
+    addTooltip(filter, L.LIST_SHOW, L.CYCLER_TIP)
+    ui.filterButton = filter
     function ui.refreshList()
+        showFilter()
+        local src = ui.source
+        local list = (src == "mine") and db.players or (db.shared and db.shared[src]) or {}
         local all = {}
-        for key, e in pairs(db.players) do table.insert(all, { key = key, e = e }) end
+        for key, e in pairs(list) do
+            if src == "mine" or (not e.hidden and e.last) then table.insert(all, { key = key, e = e }) end
+        end
         table.sort(all, function(a, b) return (a.e.last or 0) > (b.e.last or 0) end)
         local pages = math.max(1, math.ceil(#all / LIST_PAGE))
         if ui.page > pages then ui.page = pages end
@@ -660,8 +778,16 @@ local function buildListPage(category)
             local r, item = rows[i], all[(ui.page - 1) * LIST_PAGE + i]
             if item then
                 local e = item.e
-                r.text:SetText(string.format(L.LIST_ROW, describe(e), plural(e.count or 1), day(e.last), e.where or "?"))
-                r.btn:SetScript("OnClick", function() unmark(item.key) end)
+                if src == "mine" then
+                    r.text:SetText(string.format(L.LIST_ROW, describe(e), plural(e.count or 1), day(e.last), e.where or "?"))
+                    r.btn:SetText(L.BTN_UNMARK)
+                    r.btn:SetScript("OnClick", function() unmark(item.key) end)
+                else
+                    r.text:SetText(string.format(L.LIST_ROW_SHARED, describe(e), e.by or "?", plural(e.count or 1),
+                        day(e.last), e.where or "?"))
+                    r.btn:SetText(L.BTN_HIDE)
+                    r.btn:SetScript("OnClick", function() if ns.share then ns.share.hide(src, item.key) end end)
+                end
                 r.text:Show() r.btn:Show()
             else
                 r.text:Hide() r.btn:Hide()
@@ -687,7 +813,7 @@ local function buildOptions()
         scroll:SetPoint("TOPLEFT", 0, -4)
         scroll:SetPoint("BOTTOMRIGHT", -28, 4)
         content = CreateFrame("Frame", nil, scroll)
-        content:SetSize(620, 820)
+        content:SetSize(620, 1000)
         scroll:SetScrollChild(content)
     end
     local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -738,6 +864,17 @@ local function buildOptions()
     y = checkbox(content, y, L.OPT_MINIMAP, "minimap", L.OPT_MINIMAP_TIP, function() ui.showMinimap() end)
     y = cycler(content, y, L.OPT_LANGUAGE, "language", LANGS, function() ui.languageChanged() end)
     y = y - 8
+    y = header(content, y, L.H_SHARE)
+    local function shareChanged()
+        refreshAll()
+        if ns.share then pcall(ns.share.settingsChanged) end
+    end
+    y = checkbox(content, y, L.OPT_SHARE_GUILD, "shareGuild", L.OPT_SHARE_GUILD_TIP, shareChanged)
+    y = checkbox(content, y, L.OPT_SHARE_FRIENDS, "shareFriends", L.OPT_SHARE_FRIENDS_TIP, shareChanged)
+    y = checkbox(content, y, L.OPT_SHARE_BNET, "shareBnet", L.OPT_SHARE_BNET_TIP, shareChanged)
+    y = checkbox(content, y, L.OPT_SHARED_ALERTS, "sharedAlerts", L.OPT_SHARED_ALERTS_TIP)
+    y = checkbox(content, y, L.OPT_SHARED_CENTER, "sharedCenter")
+    y = y - 8
     y = header(content, y, L.H_TEST)
     y = checkbox(content, y, L.OPT_TEST, "test", nil, refreshPlates)
     y = checkbox(content, y, L.OPT_DEBUG, "debug")
@@ -787,6 +924,7 @@ local function launcherTooltip(owner, canDrag)
     GameTooltip:SetText("|T" .. ICON_PATH .. ":16|t " .. L.TITLE, 1, 1, 1)
     GameTooltip:AddLine(string.format(L.TIP_STATUS, onOff(S.enabled)), 1, 0.82, 0)
     GameTooltip:AddLine(string.format(L.TIP_COUNT, markedCount()), 1, 0.82, 0)
+    GameTooltip:AddLine(string.format(L.TIP_SHARED_COUNT, sharedCount("friends"), sharedCount("guild")), 1, 0.82, 0)
     GameTooltip:AddLine(L.TIP_LEFT, 0.8, 0.8, 0.8)
     GameTooltip:AddLine(L.TIP_RIGHT, 0.8, 0.8, 0.8)
     if canDrag then GameTooltip:AddLine(L.TIP_DRAG, 0.8, 0.8, 0.8) end
@@ -895,17 +1033,26 @@ local function findKeysByName(text)
     return keys
 end
 
-local function listMarked()
+-- source = nil (sua lista), "friends" ou "guild".
+local function listMarked(source)
+    local list = source and (db.shared and db.shared[source] or {}) or db.players
     local rows = {}
-    for key, e in pairs(db.players) do table.insert(rows, { key = key, e = e }) end
+    for key, e in pairs(list) do
+        if not source or (not e.hidden and e.last) then table.insert(rows, { key = key, e = e }) end
+    end
     table.sort(rows, function(a, b) return (a.e.last or 0) > (b.e.last or 0) end)
     if #rows == 0 then say(L.NOBODY) return end
-    say(string.format(L.LIST_HEADER, #rows))
+    say(source and string.format(L.LIST_HEADER_SHARED, #rows, circleLabel(source)) or string.format(L.LIST_HEADER, #rows))
     for i, r in ipairs(rows) do
         if i > 40 then say(string.format(L.LIST_MORE, #rows - 40)) break end
         local e = r.e
-        DEFAULT_CHAT_FRAME:AddMessage("  " .. string.format(L.LIST_ROW, describe(e), plural(e.count or 1),
-            day(e.last, L.DATE_TIME), e.where or "?") .. " " .. unmarkLink(r.key))
+        if source then
+            DEFAULT_CHAT_FRAME:AddMessage("  " .. string.format(L.LIST_ROW_SHARED, describe(e), e.by or "?",
+                plural(e.count or 1), day(e.last, L.DATE_TIME), e.where or "?") .. " " .. hideLink(source, r.key))
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("  " .. string.format(L.LIST_ROW, describe(e), plural(e.count or 1),
+                day(e.last, L.DATE_TIME), e.where or "?") .. " " .. unmarkLink(r.key))
+        end
     end
 end
 
@@ -923,7 +1070,11 @@ local COMMANDS = {
     minimapa = "minimap", minimap = "minimap",
     idioma = "language", language = "language", lang = "language",
     debug = "debug",
+    compartilhar = "share", share = "share", enviar = "share", sync = "share",
+    bloquear = "block", block = "block",
+    desbloquear = "unblock", unblock = "unblock",
 }
+local LIST_ARGS = { amigos = "friends", friends = "friends", guilda = "guild", guild = "guild" }
 local LANG_ARGS = { auto = "auto", pt = "ptBR", ptbr = "ptBR", ["português"] = "ptBR", portugues = "ptBR",
     en = "enUS", enus = "enUS", english = "enUS", ingles = "enUS", ["inglês"] = "enUS" }
 
@@ -951,7 +1102,13 @@ SlashCmdList.PVPWATCHLIST = function(msg)
     local cmd, rest = msg:match("^(%S*)%s*(.-)$")
     cmd = COMMANDS[string.lower(cmd or "")]
     if cmd == "list" then
-        listMarked()
+        listMarked(LIST_ARGS[string.lower(rest)])
+    elseif cmd == "share" then
+        local n = ns.share and ns.share.syncNow(false)
+        if n then say(string.format(L.SHARE_QUEUED, n)) else say(L.SHARE_OFF) end
+    elseif cmd == "block" or cmd == "unblock" then
+        if rest == "" then say(L.NEED_NAME)
+        elseif ns.share then ns.share[cmd](rest) end
     elseif cmd == "config" then
         openOptions()
     elseif cmd == "remove" then
@@ -996,7 +1153,8 @@ end
 
 -- ---------------------------------------------------------------- eventos
 
-f:SetScript("OnUpdate", function()
+f:SetScript("OnUpdate", function(_, elapsed)
+    if db and ns.share then pcall(ns.share.onUpdate, elapsed) end -- fila de envio do compartilhamento
     if scanUntil == 0 then return end
     local t = now()
     if t > scanUntil then scanUntil = 0 return end
@@ -1013,10 +1171,14 @@ f:SetScript("OnEvent", function(self, event, ...)
         db = PvPWatchlistDB
         db.players = db.players or {}
         db.settings = db.settings or {}
+        db.shared = db.shared or {}
+        for _, c in ipairs(CIRCLES) do db.shared[c] = db.shared[c] or {} end
+        db.blocked = db.blocked or {}
         S = db.settings
         for k, v in pairs(DEFAULTS) do
             if S[k] == nil then S[k] = v end
         end
+        if S.icon == 7 then S.icon = 8 end -- o X agora marca quem veio dos amigos
         lang = pickLanguage(S.language)
         local ok, err = pcall(buildOptions)
         if not ok then debug(string.format(L.DBG_OPTIONS_FAILED, tostring(err))) end
@@ -1026,8 +1188,14 @@ f:SetScript("OnEvent", function(self, event, ...)
         return
     end
     if not db then return end
+    if ns.share and ns.share.events[event] then
+        local ok, err = pcall(ns.share.onEvent, event, ...)
+        if not ok then debug(string.format(L.DBG_SHARE_FAILED, tostring(err))) end
+        return
+    end
     if event == "PLAYER_LOGIN" then
         registerKosAlias()
+        if ns.share then pcall(ns.share.onLogin) end
     elseif event == "UNIT_COMBAT" then
         local unit, action = ...
         if unit ~= "player" then return end
@@ -1076,3 +1244,13 @@ else
     f:RegisterEvent("UNIT_COMBAT")
     f:RegisterEvent("UNIT_SPELLCAST_SENT")
 end
+
+-- O que o Share.lua (carregado depois deste arquivo) usa daqui.
+ns.core = {
+    L = L, safe = safe, isSecret = isSecret, say = say, debug = debug, now = now, inWorld = inWorld,
+    CIRCLES = CIRCLES,
+    db = function() return db end,
+    settings = function() return S end,
+    refresh = refreshAll,
+    registerEvent = function(event) pcall(f.RegisterEvent, f, event) end, -- evento que o cliente nao tem: ignora
+}

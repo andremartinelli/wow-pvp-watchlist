@@ -118,15 +118,19 @@ local ns = {}
 assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
 local chunk = assert(loadfile("PvPWatchlist.lua"))
 chunk("PvPWatchlist", ns)
+assert(loadfile("Share.lua"))("PvPWatchlist", ns)
 fire("ADDON_LOADED", "PvPWatchlist")
 local S = PvPWatchlistDB.settings
 local main, list = categories[1], categories[2]
 check(main and main.name == "PvP Watchlist", "tela principal registrada em Opcoes > AddOns como PvP Watchlist")
 check(list and list.name == "Marcados", "subpagina Marcados registrada")
 local boxes, sliders, buttons = created.CheckButton, created.Slider, created.Button
-check(#boxes == 12 and #sliders == 3, "12 caixas e 3 controles deslizantes")
--- ordem das caixas: enabled, skipIfIAttacked, ignoreLow, emote, showCount, sound, msg, center, tooltip, minimap, test, debug
-local B = { enabled = boxes[1], skip = boxes[2], ignoreLow = boxes[3], emote = boxes[4], showCount = boxes[5], sound = boxes[6], msg = boxes[7], center = boxes[8], tooltip = boxes[9], minimap = boxes[10], test = boxes[11], debug = boxes[12] }
+check(#boxes == 17 and #sliders == 3, "17 caixas e 3 controles deslizantes")
+-- ordem das caixas: enabled, skipIfIAttacked, ignoreLow, emote, showCount, sound, msg, center, tooltip, minimap,
+-- shareGuild, shareFriends, shareBnet, sharedAlerts, sharedCenter, test, debug
+local B = { enabled = boxes[1], skip = boxes[2], ignoreLow = boxes[3], emote = boxes[4], showCount = boxes[5], sound = boxes[6], msg = boxes[7], center = boxes[8], tooltip = boxes[9], minimap = boxes[10], shareGuild = boxes[11], shareFriends = boxes[12], shareBnet = boxes[13], sharedAlerts = boxes[14], sharedCenter = boxes[15], test = boxes[16], debug = boxes[17] }
+check(B.shareGuild.checked == true and B.shareFriends.checked == true and B.shareBnet.checked == false
+  and B.sharedAlerts.checked == true and B.sharedCenter.checked == false, "compartilhamento: guilda e amigos ligados, Battle.net e aviso no centro desligados")
 local SL = { memory = sliders[1], levels = sliders[2], size = sliders[3] }
 local emoteBtn, emoteTestBtn, iconBtn, soundBtn, testBtn = buttons[1], buttons[2], buttons[3], buttons[4], buttons[5]
 main.panel.scripts.OnShow(main.panel)
@@ -159,7 +163,7 @@ click(emoteBtn, "RightButton")
 check(S.emoteToken == "NO", "botao direito volta para /no")
 print("-- icone, tamanho e numero")
 click(iconBtn)
-check(S.icon == 7 and p1.kosSkull.texture:find("_7$"), "icone trocado para X na barra de nome")
+check(S.icon == 1 and p1.kosSkull.texture:find("_1$"), "icone trocado para Estrela (o X ficou para os amigos)")
 click(iconBtn, "RightButton")
 check(S.icon == 8, "botao direito volta para caveira")
 SL.size:SetValue(40)

@@ -12,6 +12,7 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 - Os marcados ganham um ícone na barra de nome, com o número de ataques ao lado.
 - Quando um marcado aparece de novo, você recebe um aviso: som, mensagem no chat e aviso no centro da tela. O tooltip dele também mostra o histórico.
 - Não marca quem só revidou porque você atacou primeiro.
+- Troca a lista com os amigos e com a guilda que também usam o addon. Os marcados por eles aparecem com um **X** (amigos) ou um **G** (guilda); os seus continuam com a caveira.
 - Pode fazer um emote no atacante (`/no`, `/rude`, `/laugh`...).
 - Tem botão no minimapa, entrada no menu de addons e tela de configurações em **Opções > AddOns > PvP Watchlist**.
 - Funciona em português e em inglês. O idioma segue o do jogo ou pode ser escolhido nas configurações.
@@ -21,6 +22,16 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 O Forever bloqueia o registro de combate para addons (`COMBAT_LOG_EVENT_UNFILTERED`), então nenhum addon sabe quem deu cada golpe. Quando você leva um golpe ou entra em combate, o PvP Watchlist procura, por 3 segundos, jogadores inimigos por perto que estejam em combate e com você no alvo. Se o jogo esconder quem está no alvo de cada um, ele só marca quando existe um único inimigo possível.
 
 Por isso ele pode errar ou deixar alguém passar. Para corrigir, use o link **[desmarcar]** no chat, a lista **Marcados** nas configurações ou `/pvpw marcar` com o jogador no alvo.
+
+## Compartilhamento com amigos e guilda
+
+- A troca usa mensagens de addon, que não aparecem no chat de ninguém. Quem recebe precisa ter o PvP Watchlist 1.5.0 ou mais novo.
+- Vão só as suas marcações confiáveis: o atacante estava com você no alvo, ou você marcou à mão. O que você recebeu de outros não é repassado.
+- Só são aceitas mensagens de quem está na sua guilda ou na sua lista de amigos (e do Battle.net, se ligado nas configurações).
+- O jogo bloqueia mensagens de addon em masmorras, raides e campos de batalha. Fora deles, a fila espera você sair de combate e manda uma mensagem por segundo.
+- Quando um marcado por amigos ou guilda aparece, vem uma mensagem no chat dizendo quem marcou, sem som. O link **[ocultar]** esconde esse jogador até ele ser marcado de novo. `/pvpw bloquear Nome` apaga e passa a ignorar as marcações de alguém.
+- Uma marcação recebida some depois de 30 dias sem novidade.
+- Nas configurações, a seção **Compartilhamento** liga ou desliga guilda, amigos e Battle.net (os dois primeiros vêm ligados). A página **Marcados** tem um filtro: minha lista, amigos ou guilda.
 
 ## Instalação
 
@@ -40,6 +51,10 @@ Todos os comandos funcionam em português e em inglês. `/kos` também funciona,
 | `/pvpw` | | Mostra a ajuda |
 | `/pvpw config` | `/pvpw options` | Abre as configurações |
 | `/pvpw lista` | `/pvpw list` | Lista os marcados, com link para desmarcar |
+| `/pvpw lista amigos` ou `guilda` | `/pvpw list friends` or `guild` | Lista os marcados por amigos ou pela guilda |
+| `/pvpw compartilhar` | `/pvpw share` | Manda a sua lista para amigos e guilda agora |
+| `/pvpw bloquear Nome` | `/pvpw block Name` | Apaga e passa a ignorar as marcações de alguém |
+| `/pvpw desbloquear Nome` | `/pvpw unblock Name` | Volta a aceitar as marcações dessa pessoa |
 | `/pvpw marcar` | `/pvpw mark` | Marca o seu alvo à mão |
 | `/pvpw tirar` | `/pvpw remove` | Desmarca o seu alvo |
 | `/pvpw apagar Nome` | `/pvpw delete Name` | Desmarca pelo nome |
@@ -61,7 +76,10 @@ A pasta `tests` simula a API do jogo para testar o addon fora dele. Rode da past
 lua tests/test_kos.lua
 lua tests/test_kos2.lua
 lua tests/test_kos3.lua
+lua tests/test_kos4.lua
 ```
+
+O 4 cobre o compartilhamento com amigos, guilda e Battle.net.
 
 Cada teste termina com `TUDO OK` quando tudo passa.
 
@@ -83,16 +101,19 @@ Uma tag `v*` (por exemplo `v1.4.0`) dispara o GitHub Actions, que empacota o add
 - Marked players get an icon on their nameplate, with the attack count next to it.
 - When a marked player shows up again, you get a sound, a chat message and a warning in the middle of the screen. Their tooltip shows the history too.
 - Players who only fought back because you attacked first are not marked.
+- Shares the list with friends and guildmates who also use the addon. Players they marked show an **X** (friends) or a **G** (guild); yours keep the skull.
 - Optional emote at the attacker (`/no`, `/rude`, `/laugh`...).
 - Minimap button, an entry in the AddOns menu, and a settings screen under **Options > AddOns > PvP Watchlist**.
 - English and Portuguese. The language follows the game client, or you can pick one in the settings.
 
 **How it works:** Forever blocks the combat log for addons, so no addon knows who dealt each hit. When you get hit or enter combat, PvP Watchlist looks for 3 seconds for nearby enemy players who are in combat and targeting you. If the game hides who each one is targeting, it only marks when there is exactly one possible enemy. It can miss or mismark someone; fix it with the **[unmark]** chat link, the **Marked** list in the settings, or `/pvpw mark` with the player targeted.
 
+**Sharing:** invisible addon messages, only with guildmates, friends and (optionally) Battle.net friends who run PvP Watchlist 1.5.0 or newer. Only your reliable marks are sent (the attacker had you targeted, or you marked them by hand), never what you received. The game blocks addon messages in instances, so sharing works in the open world, one message per second, out of combat. Shared marks give a chat alert without sound, with a **[hide]** link; `/pvpw block Name` drops someone's marks. Shared marks expire after 30 days without news.
+
 **Install:** search for **PvP Watchlist** in the CurseForge app or website (Forever), or download `PvPWatchlist-*.zip` from GitHub **Releases** and extract it to `World of Warcraft\_forever_\Interface\AddOns\`. Restart the game if it is open; `/reload` does not load new addons.
 
 **Coming from killonsight (1.3.0 or older)?** Remove the `Interface\AddOns\killonsight` folder, or both will load. Your old list is in `WTF\Account\<account>\SavedVariables\killonsight.lua`: with the game closed, copy it to `PvPWatchlist.lua` in the same folder and replace `killonsightDB` with `PvPWatchlistDB` in the copy.
 
-**Commands:** type `/pvpw` in game for the list. `/kos` works too if no other addon uses it. Every command works in English and Portuguese (see the table above).
+**Commands:** type `/pvpw` in game for the list (including `/pvpw list friends`, `/pvpw share`, `/pvpw block Name`). `/kos` works too if no other addon uses it. Every command works in English and Portuguese (see the table above).
 
 **License:** [MIT](LICENSE). Up to version 1.3.0 the addon was called killonsight.
