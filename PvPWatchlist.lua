@@ -1,4 +1,4 @@
--- PvP Watchlist 1.5.0 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
+-- PvP Watchlist 1.5.1 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
 -- Marca quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
 -- Textos em Locales.lua (portugues e ingles). Icone do addon em media/icon.tga.
@@ -112,6 +112,9 @@ local LANGS = {
 local db, S                -- PvPWatchlistDB e PvPWatchlistDB.settings
 local scanUntil, nextScan = 0, 0
 local myAttacks = {}       -- chave do jogador -> GetTime() do seu ultimo ataque a ele
+local myAttackGuids = {}   -- GUID do jogador -> GetTime() (o nome pode vir com ou sem reino; o GUID nao muda)
+local lastOwnAction = 0    -- GetTime() da sua ultima magia ofensiva, ataque automatico ou ordem de ataque ao demonio
+local OWN_COMBAT_GAP = 2.5 -- entrar em combate ate 2,5 s depois disso foi acao sua: nao inicia a procura
 local ui = { refreshers = {} }
 local f = CreateFrame("Frame")
 
@@ -465,14 +468,17 @@ local function candidateUnits()
     return list
 end
 
-local function iAttackedFirst(key)
+local function iAttackedFirst(key, guid)
     if not S.skipIfIAttacked then return false end
     local t = myAttacks[key]
+    if guid and myAttackGuids[guid] and (not t or myAttackGuids[guid] > t) then t = myAttackGuids[guid] end
     return t and (now() - t) <= (S.myAttackMemory or 60)
 end
 
+local hasMyDebuff -- definida mais abaixo, junto dos eventos de magia
+
 local function tryMark(u, key, display, guid, how)
-    if iAttackedFirst(key) then
+    if iAttackedFirst(key, guid) or hasMyDebuff(u) then
         debug(string.format(L.DBG_FOUGHT_BACK, display))
     elseif tooLow(u) then
         debug(string.format(L.DBG_TOO_LOW, display))
@@ -515,36 +521,79 @@ local function startScan(reason)
     nextScan = 0
 end
 
--- Voce atacou alguem: guarda para nao marcar quem so revidou.
+-- Voce atacou alguem: guarda (pela chave e pelo GUID) para nao marcar quem so revidou.
 local function rememberMyAttack(unit)
+    lastOwnAction = now()
     if isEnemyPlayer(unit) then
-        local key, display = unitInfo(unit)
+        local key, display, guid = unitInfo(unit)
         if key then
             myAttacks[key] = now()
+            if guid then myAttackGuids[guid] = now() end
             debug(string.format(L.DBG_I_ATTACKED, display))
         end
     end
 end
 
-local function onSpellSent(targetName, spellID)
-    local tn = (not isSecret(targetName)) and targetName or nil
-    if type(tn) == "string" and tn ~= "" then
-        for _, u in ipairs({ "target", "focus", "mouseover" }) do
-            local name = safe(UnitName, u)
-            if name and (name == tn or tn:find("^" .. name .. "%-")) then rememberMyAttack(u) return end
-        end
-        return
+-- true = magia ofensiva, false = de ajuda (cura, buff), nil = nao deu para saber (valor secreto ou API ausente).
+local function spellIsHarmful(spellID)
+    if spellID == nil or isSecret(spellID) then return nil end
+    if C_Spell and C_Spell.IsSpellHarmful then
+        local h = safe(C_Spell.IsSpellHarmful, spellID)
+        if h ~= nil then return h and true or false end
     end
-    -- Sem o nome do alvo: so conta se a magia for ofensiva.
-    local harmful = false
-    if C_Spell and C_Spell.IsSpellHarmful and spellID then
-        harmful = safe(C_Spell.IsSpellHarmful, spellID) and true or false
-    elseif IsHarmfulSpell and spellID and GetSpellInfo then
-        local sname = safe(GetSpellInfo, spellID)
-        harmful = sname and safe(IsHarmfulSpell, sname) and true or false
-    end
-    if harmful then rememberMyAttack("target") end
+    if C_Spell and C_Spell.IsSpellHelpful and safe(C_Spell.IsSpellHelpful, spellID) == true then return false end
+    return nil
 end
+
+-- "Fedrath" de "Fedrath", "Fedrath-Vorn" ou "Fedrath-Vorn-JxJ-US" (o Forever usa os tres formatos), em minusculas.
+local function baseName(s) return string.lower(s:match("^([^%-]+)") or s) end
+
+-- Voce lancou uma magia. Se nao for de ajuda, conta como ataque ao jogador inimigo que ela atingiu.
+-- No Forever o nome do alvo e a propria magia podem vir secretos ou noutro formato: sem como conferir,
+-- vale o inimigo no seu alvo (ou no mouseover/foco). Melhor deixar de marcar alguem do que marcar quem voce atacou.
+local function onSpellSent(targetName, spellID)
+    if spellIsHarmful(spellID) == false then return end
+    lastOwnAction = now()
+    local tn = (type(targetName) == "string" and not isSecret(targetName) and targetName ~= "") and baseName(targetName) or nil
+    local fallback
+    for _, u in ipairs({ "target", "mouseover", "focus" }) do
+        if isEnemyPlayer(u) then
+            local name = safe(UnitName, u)
+            if tn and type(name) == "string" then
+                if baseName(name) == tn then rememberMyAttack(u) return end
+            else
+                fallback = fallback or u
+            end
+        end
+    end
+    if fallback then rememberMyAttack(fallback) return end
+    if not tn then debug(L.DBG_CAST_UNKNOWN) end
+end
+
+-- Fim de uma magia sua (as com tempo de conjuracao entram em combate quando acertam). Segunda chance de
+-- guardar o ataque se o UNIT_SPELLCAST_SENT nao chegou ou veio ilegivel: so quando o jogo confirma que a
+-- magia e ofensiva, porque aqui nao ha o nome do alvo.
+local function onSpellDone(spellID)
+    local harmful = spellIsHarmful(spellID)
+    if harmful == false then return end
+    lastOwnAction = now()
+    if harmful then
+        for _, u in ipairs({ "target", "mouseover", "focus" }) do
+            if isEnemyPlayer(u) then rememberMyAttack(u) return end
+        end
+    end
+end
+
+-- O inimigo ja tem uma magia sua nele (maldicao, Corrupcao...)? Entao foi voce quem atacou primeiro.
+-- Caminho independente dos eventos de magia. Se o jogo esconder as auras, nao decide nada.
+function hasMyDebuff(unit)
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return false end
+    local aura = safe(C_UnitAuras.GetAuraDataByIndex, unit, 1, "HARMFUL|PLAYER")
+    return type(aura) == "table"
+end
+
+-- Os eventos de unidade sao registrados so para "player"; se o jogo esconder o campo, vale como seu.
+local function isPlayerUnit(unit) return isSecret(unit) or unit == "player" end
 
 -- ---------------------------------------------------------------- aviso quando um marcado aparece
 
@@ -1199,15 +1248,19 @@ f:SetScript("OnEvent", function(self, event, ...)
         if ns.share then pcall(ns.share.onLogin) end
     elseif event == "UNIT_COMBAT" then
         local unit, action = ...
-        if unit ~= "player" then return end
+        if not isPlayerUnit(unit) then return end
         if isSecret(action) or ATTACK_ACTIONS[action] then
             startScan(string.format(L.DBG_HIT, isSecret(action) and "?" or tostring(action)))
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
-        startScan(L.DBG_COMBAT)
+        -- Entrou em combate logo depois de uma acao sua: foi voce que comecou. So um golpe em voce inicia a procura.
+        if now() - lastOwnAction <= OWN_COMBAT_GAP then debug(L.DBG_COMBAT_MINE) else startScan(L.DBG_COMBAT) end
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, targetName, _, spellID = ...
-        if unit == "player" then onSpellSent(targetName, spellID) end
+        if isPlayerUnit(unit) then onSpellSent(targetName, spellID) end
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unit, _, spellID = ...
+        if isPlayerUnit(unit) then onSpellDone(spellID) end
     elseif event == "PLAYER_ENTER_COMBAT" then -- ataque automatico (corpo a corpo)
         rememberMyAttack("target")
     elseif event == "PET_ATTACK_START" then
@@ -1241,9 +1294,11 @@ f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 if f.RegisterUnitEvent then
     f:RegisterUnitEvent("UNIT_COMBAT", "player")
     f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
+    f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 else
     f:RegisterEvent("UNIT_COMBAT")
     f:RegisterEvent("UNIT_SPELLCAST_SENT")
+    f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 end
 
 -- O que o Share.lua (carregado depois deste arquivo) usa daqui.

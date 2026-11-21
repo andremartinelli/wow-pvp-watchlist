@@ -14,7 +14,7 @@ UnitExists = function(u) return resolve(u) ~= nil end
 UnitIsUnit = function(a, b)
   if secretTargeting and a:match("target$") and a ~= "target" then return SECRET end
   local ra, rb = resolve(a), resolve(b); return ra ~= nil and ra == rb end
-UnitName = function(u) local r = resolve(u); if r then return r.name, nil end end
+UnitName = function(u) local r = resolve(u); if r then if r.secretName then return SECRET end return r.name, r.realm end end
 UnitGUID = function(u) local r = resolve(u); return r and r.guid end
 UnitIsPlayer = function(u) local r = resolve(u); return r and r.isPlayer or false end
 UnitCanAttack = function(_, u) local r = resolve(u); return r and r.canAttack or false end
@@ -158,4 +158,124 @@ out = {}; slash("lista"); check(has("Ninguém marcado"), "lista vazia no fim")
 units.target = { name = "Novo", guid = "Player-1-GGG", isPlayer = true, enemy = true, canAttack = true, class = "Guerreiro", level = 34 }
 out = {}; slash("marcar"); check(has("Marcado à mão: Novo"), "/kos marcar")
 out = {}; slash(""); check(has("Comandos"), "ajuda")
+
+-- Casos reais de 21/11/2026 (registro de combate): voce lancou Ruina da Agonia primeiro e o addon marcou mesmo assim.
+-- No Forever o nome do alvo da magia e a magia podem vir secretos ou com reino e sufixo ("Fedrath-Vorn-JxJ-US").
+-- Como no jogo: valor secreto entra, valor secreto sai. 99 e uma magia de ajuda (cura/buff).
+C_Spell = {
+  IsSpellHarmful = function(id) if id == SECRET then return SECRET end return id ~= 99 end,
+  IsSpellHelpful = function(id) if id == SECRET then return SECRET end return id == 99 end,
+}
+-- Auras: so responde para "HARMFUL|PLAYER" quando a unidade tem uma magia sua (myDebuff).
+C_UnitAuras = { GetAuraDataByIndex = function(u, i, filter)
+  local r = resolve(u)
+  if r and r.myDebuff and i == 1 and filter == "HARMFUL|PLAYER" then return { name = r.myDebuff } end
+end }
+local function enemy(name, realm, guid, extra)
+  local t = { name = name, realm = realm, guid = guid, isPlayer = true, enemy = true, canAttack = true, combat = false }
+  for k, v in pairs(extra or {}) do t[k] = v end
+  return t
+end
+local function marked(name) return has("Marcado: " .. name) end
+
+print("-- 8. Fedrath: sua maldicao com nome do alvo e magia secretos, e voce entra em combate por causa dela")
+clock = clock + 400; units.target = nil
+addPlate("nameplate8", enemy("Fedrath", "Vorn", "Player-6800-00ABDEB4", { class = "Mago", level = 21 }))
+units.target = units.nameplate8
+out = {}
+fire("UNIT_SPELLCAST_SENT", "player", SECRET, "c8", SECRET)
+fire("UNIT_SPELLCAST_SUCCEEDED", "player", "c8", SECRET)
+check(has("você atacou Fedrath%-Vorn"), "magia com dados secretos conta como ataque ao seu alvo")
+units.nameplate8.target = "player"; units.nameplate8.combat = true
+fire("PLAYER_REGEN_DISABLED"); tick(3)
+check(has("entrou em combate por ação sua") and not marked("Fedrath"), "entrar em combate pela sua maldicao nao inicia a procura")
+out = {}; clock = clock + 2
+fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
+check(not marked("Fedrath") and has("Fedrath%-Vorn revidou"), "um golpe de monstro depois: Fedrath continua sem marca (revidou)")
+
+print("-- 9. Leigong: o jogo da o nome com reino e sufixo, o alvo vem sem reino")
+units.target = nil; removePlate("nameplate8"); clock = clock + 400
+addPlate("nameplate9", enemy("Leigong", "Tutu", "Player-1-LEI"))
+units.target = units.nameplate9
+out = {}
+fire("UNIT_SPELLCAST_SENT", "player", "Leigong-Tutu-JxJ-US", "c9", 6217)
+check(has("você atacou Leigong%-Tutu"), "nome 'Leigong-Tutu-JxJ-US' reconhecido")
+units.nameplate9.target = "player"; units.nameplate9.combat = true
+clock = clock + 1.5
+fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
+check(not marked("Leigong"), "Leigong nao e marcado")
+units.target = nil; removePlate("nameplate9")
+
+print("-- 10. Staz: o jogo da o nome do alvo sem reino e o da unidade com reino; ele revida 15 s depois")
+clock = clock + 400
+addPlate("nameplate10", enemy("Staz", "Exanime", "Player-1-STZ"))
+units.target = units.nameplate10
+fire("UNIT_SPELLCAST_SENT", "player", "Staz", "c10", 6217)
+clock = clock + 15
+units.nameplate10.target = "player"; units.nameplate10.combat = true
+out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
+check(not marked("Staz"), "revidou depois de 15 s: nao marca")
+units.target = nil; removePlate("nameplate10")
+
+print("-- 11. Mesmo GUID com o nome em outro formato")
+clock = clock + 400
+units.target = enemy("Duplo", nil, "Player-1-DUP")
+fire("UNIT_SPELLCAST_SENT", "player", "Duplo", "c11", 6217)
+units.target = nil
+addPlate("nameplate11", enemy("Duplo", "OutroReino", "Player-1-DUP", { target = "player", combat = true }))
+out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
+check(not marked("Duplo"), "reconhece pelo GUID mesmo com a chave diferente")
+removePlate("nameplate11")
+
+print("-- 12. Quem ataca de verdade continua sendo marcado")
+clock = clock + 400
+addPlate("nameplate12", enemy("Fedrath", "Vorn", "Player-6800-00ABDEB4"))
+units.target = units.nameplate12
+fire("UNIT_SPELLCAST_SENT", "player", SECRET, "c12", SECRET)
+units.nameplate12.target = "player"; units.nameplate12.combat = true
+addPlate("nameplate13", enemy("Jeskai", "Javi", "Player-1-JES", { target = "player", combat = true }))
+out = {}; clock = clock + 0.5
+fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
+check(marked("Jeskai") and not marked("Fedrath"), "Jeskai te bateu: marcado; Fedrath (voce atacou) nao")
+units.target = nil; removePlate("nameplate12"); removePlate("nameplate13")
+
+print("-- 13. Cura ou buff com um inimigo no alvo nao conta como ataque")
+clock = clock + 400
+addPlate("nameplate14", enemy("Atacante", "Reino", "Player-1-ATK"))
+units.target = units.nameplate14
+out = {}; fire("UNIT_SPELLCAST_SENT", "player", SECRET, "c14", 99)
+check(not has("você atacou Atacante"), "magia de ajuda (99) nao e guardada como ataque")
+units.nameplate14.target = "player"; units.nameplate14.combat = true
+clock = clock + 3
+fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
+check(marked("Atacante"), "ele te ataca depois: marcado")
+units.target = nil; removePlate("nameplate14")
+
+print("-- 13b. Os eventos de magia nao chegam: a sua maldicao nele basta")
+clock = clock + 400
+addPlate("nameplate16", enemy("Semevento", "Reino", "Player-1-SEM", { target = "player", combat = true, myDebuff = "Ruína da Agonia" }))
+out = {}; fire("PLAYER_REGEN_DISABLED"); tick(1)
+check(not marked("Semevento") and has("Semevento%-Reino revidou"), "tem Ruina da Agonia sua: nao marca, mesmo sem nenhum evento de magia")
+removePlate("nameplate16")
+
+print("-- 13c. Magia so com o fim (SUCCEEDED) legivel, e o evento de unidade secreto")
+clock = clock + 400
+addPlate("nameplate17", enemy("Fimdamagia", "Reino", "Player-1-FIM"))
+units.target = units.nameplate17
+out = {}
+fire("UNIT_SPELLCAST_SENT", SECRET, SECRET, "c17", SECRET)
+fire("UNIT_SPELLCAST_SUCCEEDED", SECRET, "c17", 6217)
+check(has("você atacou Fimdamagia%-Reino"), "o fim da magia ofensiva guarda o ataque")
+units.nameplate17.target = "player"; units.nameplate17.combat = true
+clock = clock + 3
+fire("UNIT_COMBAT", SECRET, "WOUND", "", 30, 1); tick(1)
+check(not marked("Fimdamagia"), "golpe com unidade secreta inicia a procura, e ele nao e marcado")
+units.target = nil; removePlate("nameplate17")
+
+print("-- 14. Entrar em combate sem acao sua ainda inicia a procura (ex.: atordoado por um ladino)")
+clock = clock + 400
+addPlate("nameplate15", enemy("Ladino", "Reino", "Player-1-ROG", { target = "player", combat = true }))
+out = {}; fire("PLAYER_REGEN_DISABLED"); tick(1)
+check(marked("Ladino"), "sem acao sua antes: procura e marca")
+removePlate("nameplate15")
 print(fails == 0 and "TUDO OK" or (fails .. " FALHA(S)"))
