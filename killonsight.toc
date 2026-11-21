@@ -1,0 +1,17 @@
+## Interface: 16001
+## Title: killonsight
+## Notes: Marks with a skull whoever attacks you first in world PvP and warns you when they show up again. /kos
+## Notes-ptBR: Marca com caveira quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo. /kos
+## Author: Andre (feito com o Claude)
+## Version: 1.3.0
+## SavedVariables: killonsightDB
+## IconTexture: Interface\AddOns\killonsight\media\icon
+## AddonCompartmentFunc: killonsight_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: killonsight_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: killonsight_OnAddonCompartmentLeave
+## Category: PvP
+## X-Category: PvP
+## X-License: MIT
+## X-Website: https://github.com/andremartinelli/killonsight
+Locales.lua
+killonsight.lua
