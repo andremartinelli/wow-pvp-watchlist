@@ -83,6 +83,8 @@ O 4 cobre o compartilhamento com amigos, guilda e Battle.net.
 
 Cada teste termina com `TUDO OK` quando tudo passa.
 
+**No Linux e nas sessões na nuvem do Claude Code:** `bash scripts/cloud-setup.sh` instala o Lua 5.1 (a versão do WoW) pelo apt e pode rodar quantas vezes quiser. Depois, `bash scripts/test.sh` roda os quatro testes e termina com erro se algum não chegar ao `TUDO OK`. O addon não tem banco, serviços nem `.env`, então não há mais nada a preparar.
+
 ## Publicação
 
 Uma tag `v*` (por exemplo `v1.4.0`) dispara o GitHub Actions, que empacota o addon com o [BigWigs Packager](https://github.com/BigWigsMods/packager) (configuração em `.pkgmeta`) e publica no GitHub Releases e no CurseForge.

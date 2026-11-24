@@ -2,7 +2,9 @@ package-as: PvPWatchlist
 
 ignore:
   - tests
+  - scripts
   - README.md
   - CURSEFORGE.md
+  - CLAUDE.md
   - media/icon.svg
   - .github
