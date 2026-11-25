@@ -1,5 +1,7 @@
 # PvP Watchlist on CurseForge
 
+**English** | [Português](CURSEFORGE.pt-BR.md)
+
 Text and settings for the CurseForge project page. This file is not packaged.
 
 - Game: World of Warcraft, flavor **Forever**, game version **1.60.1** (Interface 16001)
