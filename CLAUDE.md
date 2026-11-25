@@ -5,9 +5,9 @@ Addon de WoW: Forever em Lua 5.1 (a versão do jogo). O `.toc` carrega `Locales.
 ## Preparar e testar
 
 - `bash scripts/cloud-setup.sh` instala o Lua 5.1 pelo apt. É idempotente; rode se `lua5.1` não existir.
-- `bash scripts/test.sh` roda os quatro testes e termina com erro se algum não chegar ao `TUDO OK`. Rode antes de todo commit que mexe no addon.
+- `bash scripts/test.sh` roda os quatro testes e termina com erro se algum não chegar ao `ALL OK`. Rode antes de todo commit que mexe no addon.
 - Não há banco, serviços, `.env` nem segredos de desenvolvimento.
-- Todo texto novo do addon entra em português e em inglês no `Locales.lua` (o `test_kos4.lua` confere).
+- Todo texto novo do addon entra em português e em inglês no `Locales.lua` (o `test_sharing.lua` confere).
 - Arquivo novo que não faz parte do addon (script, documentação) entra no `ignore` do `.pkgmeta`, senão vai para o zip publicado.
 
 ## Publicação (produção)

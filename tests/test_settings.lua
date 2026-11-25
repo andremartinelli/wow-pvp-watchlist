@@ -1,4 +1,4 @@
--- Simulacao da API do WoW para testar o PvP Watchlist (deteccao + tela de configuracoes) fora do jogo, em portugues.
+-- Simulation of the WoW API to test PvP Watchlist (detection + settings screen) outside the game, in Portuguese.
 local clock = 1000
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 issecretvalue = function(v) return v == SECRET end
@@ -45,7 +45,7 @@ RaidWarningFrame = {}
 ChatTypeInfo = { RAID_WARNING = { r = 1, g = 0.3, b = 0.1 } }
 RaidNotice_AddMessage = function(_, text) table.insert(centers, clean(text)); print("  centro> " .. clean(text)) end
 
--- objetos de UI genericos: metodos CamelCase viram no-op; os que importam guardam estado
+-- generic UI objects: CamelCase methods become no-ops; the ones that matter keep state
 local created = { CheckButton = {}, Slider = {}, Button = {}, Frame = {} }
 local function stub(kind)
   local o = { kind = kind, scripts = {}, shown = true }
@@ -105,7 +105,7 @@ local function tick(s) local stop = clock + s; while clock < stop do clock = clo
 local function slash(msg) SlashCmdList.PVPWATCHLIST(msg) end
 local function has(pat, list) for _, m in ipairs(list or out) do if m:find(pat) then return true end end return false end
 local fails = 0
-local function check(cond, label) print((cond and "OK   " or "FALHA ") .. label); if not cond then fails = fails + 1 end end
+local function check(cond, label) print((cond and "OK   " or "FAIL ") .. label); if not cond then fails = fails + 1 end end
 local function addPlate(token, data) units[token] = data; plates[token] = stub("Plate"); fire("NAME_PLATE_UNIT_ADDED", token) end
 local function removePlate(token) fire("NAME_PLATE_UNIT_REMOVED", token); units[token] = nil end
 local function click(w, button) w.scripts.OnClick(w, button or "LeftButton") end
@@ -122,108 +122,108 @@ assert(loadfile("Share.lua"))("PvPWatchlist", ns)
 fire("ADDON_LOADED", "PvPWatchlist")
 local S = PvPWatchlistDB.settings
 local main, list = categories[1], categories[2]
-check(main and main.name == "PvP Watchlist", "tela principal registrada em Opcoes > AddOns como PvP Watchlist")
-check(list and list.name == "Marcados", "subpagina Marcados registrada")
+check(main and main.name == "PvP Watchlist", "main screen registered in Options > AddOns as PvP Watchlist")
+check(list and list.name == "Marcados", "Marcados subpage registered")
 local boxes, sliders, buttons = created.CheckButton, created.Slider, created.Button
-check(#boxes == 17 and #sliders == 3, "17 caixas e 3 controles deslizantes")
--- ordem das caixas: enabled, skipIfIAttacked, ignoreLow, emote, showCount, sound, msg, center, tooltip, minimap,
+check(#boxes == 17 and #sliders == 3, "17 checkboxes and 3 sliders")
+-- checkbox order: enabled, skipIfIAttacked, ignoreLow, emote, showCount, sound, msg, center, tooltip, minimap,
 -- shareGuild, shareFriends, shareBnet, sharedAlerts, sharedCenter, test, debug
 local B = { enabled = boxes[1], skip = boxes[2], ignoreLow = boxes[3], emote = boxes[4], showCount = boxes[5], sound = boxes[6], msg = boxes[7], center = boxes[8], tooltip = boxes[9], minimap = boxes[10], shareGuild = boxes[11], shareFriends = boxes[12], shareBnet = boxes[13], sharedAlerts = boxes[14], sharedCenter = boxes[15], test = boxes[16], debug = boxes[17] }
 check(B.shareGuild.checked == true and B.shareFriends.checked == true and B.shareBnet.checked == false
-  and B.sharedAlerts.checked == true and B.sharedCenter.checked == false, "compartilhamento: guilda e amigos ligados, Battle.net e aviso no centro desligados")
+  and B.sharedAlerts.checked == true and B.sharedCenter.checked == false, "sharing: guild and friends on, Battle.net and center warning off")
 local SL = { memory = sliders[1], levels = sliders[2], size = sliders[3] }
 local emoteBtn, emoteTestBtn, iconBtn, friendsIconBtn, guildIconBtn, soundBtn, testBtn =
   buttons[1], buttons[2], buttons[3], buttons[4], buttons[5], buttons[6], buttons[7]
 main.panel.scripts.OnShow(main.panel)
-check(B.enabled.checked == true and B.ignoreLow.checked == false and B.emote.checked == true and SL.size.value == 26, "valores padrao aparecem na tela")
+check(B.enabled.checked == true and B.ignoreLow.checked == false and B.emote.checked == true and SL.size.value == 26, "default values show on the screen")
 
-print("-- desligar a marcacao automatica")
+print("-- turn off automatic marking")
 setBox(B.enabled, false)
 addPlate("nameplate1", { name = "Ganker", guid = "G1", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true, class = "Ladino", level = 32 })
 out = {}; hit()
-check(not has("Marcado"), "desligado: nao marca")
+check(not has("Marcado"), "off: does not mark")
 setBox(B.enabled, true); clock = clock + 5
 out = {}; hit()
-check(has("Marcado: Ganker"), "ligado de novo: marca")
+check(has("Marcado: Ganker"), "on again: marks")
 local p1 = plates.nameplate1
-check(p1.kosSkull.texture:find("_8$") and p1.kosSkull.w == 26 and p1.kosCount.text == "1", "caveira 26 com o numero 1")
-check(#emotes == 1 and emotes[1] == "NO@nameplate1", "fez /no direcionado ao atacante: " .. tostring(emotes[1]))
+check(p1.kosSkull.texture:find("_8$") and p1.kosSkull.w == 26 and p1.kosCount.text == "1", "size 26 skull with the number 1")
+check(#emotes == 1 and emotes[1] == "NO@nameplate1", "did a /no aimed at the attacker: " .. tostring(emotes[1]))
 out = {}; hit()
-check(#emotes == 1, "nao repete o emote na mesma luta")
+check(#emotes == 1, "does not repeat the emote in the same fight")
 
-print("-- emote: trocar, testar, desligar, bloqueio do jogo")
+print("-- emote: change, test, turn off, game block")
 click(emoteBtn)
-check(S.emoteToken == "RUDE", "emote trocado para /rude")
+check(S.emoteToken == "RUDE", "emote changed to /rude")
 units.target = units.nameplate1; emotes = {}
 click(emoteTestBtn)
-check(emotes[1] == "RUDE@target", "botao Testar no alvo")
+check(emotes[1] == "RUDE@target", "Test button on the target")
 units.target = nil; emotes = {}; out = {}
 click(emoteTestBtn)
-check(#emotes == 0 and has("Ponha alguém no alvo"), "sem alvo: nao faz emote")
+check(#emotes == 0 and has("Ponha alguém no alvo"), "no target: does not emote")
 click(emoteBtn, "RightButton")
-check(S.emoteToken == "NO", "botao direito volta para /no")
-print("-- icone, tamanho e numero")
+check(S.emoteToken == "NO", "right click goes back to /no")
+print("-- icon, size and number")
 click(iconBtn)
-check(S.icon == 7 and p1.kosSkull.texture:find("_7$"), "icone da sua lista trocado para X na barra de nome")
+check(S.icon == 7 and p1.kosSkull.texture:find("_7$"), "icon of your list changed to X on the nameplate")
 click(iconBtn, "RightButton")
-check(S.icon == 8, "botao direito volta para caveira")
+check(S.icon == 8, "right click goes back to skull")
 check(S.friendsIcon == 7 and S.guildIcon == 4 and friendsIconBtn.text == "X" and guildIconBtn.text == "Triângulo",
-  "icones padrao: amigos X, guilda triangulo")
+  "default icons: friends X, guild triangle")
 click(friendsIconBtn)
-check(S.friendsIcon == 1 and friendsIconBtn.text == "Estrela", "icone dos amigos trocado para Estrela")
+check(S.friendsIcon == 1 and friendsIconBtn.text == "Estrela", "friends icon changed to Star")
 click(guildIconBtn, "RightButton")
-check(S.guildIcon == 3 and guildIconBtn.text == "Losango", "icone da guilda trocado para Losango (botao direito)")
-for _ = 1, 6 do click(friendsIconBtn) end -- Estrela e a 3a de 8: mais 6 cliques da a volta ate a Caveira
-check(S.friendsIcon == 8, "amigos podem usar a caveira, a mesma da sua lista")
+check(S.guildIcon == 3 and guildIconBtn.text == "Losango", "guild icon changed to Diamond (right click)")
+for _ = 1, 6 do click(friendsIconBtn) end -- Star is the 3rd of 8: 6 more clicks wrap around to the Skull
+check(S.friendsIcon == 8, "friends can use the skull, the same as your list")
 S.friendsIcon, S.guildIcon = 7, 4
 SL.size:SetValue(40)
-check(S.iconSize == 40 and p1.kosSkull.w == 40, "tamanho 40 aplicado")
+check(S.iconSize == 40 and p1.kosSkull.w == 40, "size 40 applied")
 setBox(B.showCount, false)
-check(p1.kosCount.shown == false, "numero escondido")
+check(p1.kosCount.shown == false, "number hidden")
 setBox(B.showCount, true)
 
-print("-- ignorar nivel baixo")
+print("-- ignore low level")
 setBox(B.ignoreLow, true); SL.levels:SetValue(5)
 addPlate("nameplate2", { name = "Baixinho", guid = "G2", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true, level = 20 })
 clock = clock + 200; out = {}; hit()
-check(not has("Marcado: Baixinho"), "nivel 20 contra 30 com limite 5: ignorado")
+check(not has("Marcado: Baixinho"), "level 20 against 30 with limit 5: ignored")
 units.nameplate2.level = 27; clock = clock + 5; out = {}; hit()
-check(has("Marcado: Baixinho"), "nivel 27: marcado")
-check(emotes[#emotes] == "NO@nameplate2", "emote no novo atacante")
+check(has("Marcado: Baixinho"), "level 27: marked")
+check(emotes[#emotes] == "NO@nameplate2", "emote on the new attacker")
 setBox(B.ignoreLow, false); removePlate("nameplate2")
 
-print("-- nao marcar quem eu ataquei (e desligando a opcao)")
+print("-- do not mark who I attacked (and turning the option off)")
 addPlate("nameplate3", { name = "Vitima", guid = "G3", isPlayer = true, enemy = true, canAttack = true, combat = false, level = 30 })
 units.target = units.nameplate3
 fire("UNIT_SPELLCAST_SENT", "player", "Vitima", "c1", 172)
 units.nameplate3.target = "player"; units.nameplate3.combat = true
 clock = clock + 2; out = {}; hit()
-check(not has("Marcado: Vitima"), "atacou primeiro: nao marca")
+check(not has("Marcado: Vitima"), "attacked first: does not mark")
 setBox(B.emote, false); emotes = {}
 setBox(B.skip, false); clock = clock + 2; out = {}; hit()
-check(#emotes == 0, "emote desligado: nao faz")
+check(#emotes == 0, "emote off: does not do it")
 setBox(B.emote, true)
-check(has("Marcado: Vitima"), "opcao desligada: marca mesmo assim")
+check(has("Marcado: Vitima"), "option off: marks anyway")
 setBox(B.skip, true); SL.memory:SetValue(30)
-check(S.myAttackMemory == 30, "memoria do ataque ajustada para 30 s")
+check(S.myAttackMemory == 30, "attack memory set to 30 s")
 removePlate("nameplate3"); units.target = nil
 
-print("-- aviso quando reaparece: som, centro e chat")
+print("-- warning when he reappears: sound, center and chat")
 removePlate("nameplate1"); clock = clock + 400
 sounds = {}; centers = {}; out = {}
 addPlate("nameplate4", { name = "Ganker", guid = "G1", isPlayer = true, enemy = true, canAttack = true, level = 32 })
-check(#sounds == 1 and sounds[1] == 8959, "som de alerta de raide")
-check(has("Ganker por perto", centers), "aviso no centro da tela")
-check(has("Apareceu: Ganker"), "mensagem no chat")
+check(#sounds == 1 and sounds[1] == 8959, "raid warning sound")
+check(has("Ganker por perto", centers), "warning at the center of the screen")
+check(has("Apareceu: Ganker"), "chat message")
 click(soundBtn)
-check(S.soundId == "ready", "som trocado para checagem de prontidao")
+check(S.soundId == "ready", "sound changed to ready check")
 setBox(B.sound, false); sounds = {}
 click(testBtn)
-check(#sounds == 1 and sounds[1] == 8960, "botao Testar toca mesmo com som desligado")
+check(#sounds == 1 and sounds[1] == 8960, "Test button plays even with sound off")
 setBox(B.center, false); setBox(B.msg, false); setBox(B.sound, true)
 removePlate("nameplate4"); clock = clock + 400; centers = {}; out = {}
 addPlate("nameplate4", { name = "Ganker", guid = "G1", isPlayer = true, enemy = true, canAttack = true, level = 32 })
-check(#centers == 0 and not has("Apareceu"), "centro e mensagem desligados")
+check(#centers == 0 and not has("Apareceu"), "center and message off")
 
 print("-- tooltip")
 local tip = stub("Tooltip"); tip.lines = {}
@@ -231,28 +231,28 @@ tip.GetUnit = function() return "Ganker", "nameplate4" end
 tip.AddLine = function(self, s) table.insert(self.lines, s) end
 GameTooltip = tip
 tooltipHook(tip)
-check(tip.lines[1] and tip.lines[1]:find("PvP Watchlist: te atacou 2 vezes"), "linha no tooltip: " .. tostring(tip.lines[1]))
+check(tip.lines[1] and tip.lines[1]:find("PvP Watchlist: te atacou 2 vezes"), "tooltip line: " .. tostring(tip.lines[1]))
 setBox(B.tooltip, false); tip.lines = {}; tooltipHook(tip)
-check(#tip.lines == 0, "tooltip desligado")
+check(#tip.lines == 0, "tooltip off")
 
-print("-- lista na subpagina e desmarcar por botao")
+print("-- list on the subpage and unmark by button")
 list.panel.scripts.OnShow(list.panel)
-local rowBtn = buttons[9] -- 8 = idioma
-check(rowBtn.shown, "primeira linha da lista com botao Desmarcar")
+local rowBtn = buttons[9] -- 8 = language
+check(rowBtn.shown, "first list row with an Unmark button")
 out = {}; click(rowBtn)
-check(has("desmarcado"), "botao Desmarcar funciona")
+check(has("desmarcado"), "Unmark button works")
 lockdown = true; emotes = {}
 units.target = { name = "Bloqueado", guid = "G9", isPlayer = true, enemy = true, canAttack = true, level = 30 }
 addPlate("nameplate9", { name = "Bloqueado", guid = "G9", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true, level = 30 })
 clock = clock + 300; out = {}; hit()
-check(has("Marcado: Bloqueado") and #emotes == 0, "chat bloqueado pelo jogo: marca sem emote")
+check(has("Marcado: Bloqueado") and #emotes == 0, "chat blocked by the game: marks without emote")
 lockdown = false; emotes = {}
 out = {}; slash("marcar")
-check(has("Marcado à mão") and #emotes == 0, "marcar a mao nao faz emote")
+check(has("Marcado à mão") and #emotes == 0, "marking by hand does not emote")
 out = {}; slash("emote")
-check(S.emote == false and B.emote.checked == false, "/kos emote desliga e atualiza a tela")
+check(S.emote == false and B.emote.checked == false, "/kos emote turns it off and updates the screen")
 out = {}; slash("config")
-check(categories.opened == 42, "/kos config abre a tela")
+check(categories.opened == 42, "/kos config opens the screen")
 out = {}; slash("debug")
-check(B.debug.checked == true, "comando /kos debug atualiza a caixa na tela")
-print(fails == 0 and "TUDO OK" or (fails .. " FALHA(S)"))
+check(B.debug.checked == true, "/kos debug command updates the checkbox on the screen")
+print(fails == 0 and "ALL OK" or (fails .. " FAIL(S)"))

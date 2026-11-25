@@ -1,5 +1,5 @@
--- Simulacao da API do WoW para testar o PvP Watchlist em ingles, o botao do minimapa, o menu de addons, a troca de idioma
--- e o atalho /kos quando outro addon ja usa esse comando.
+-- Simulation of the WoW API to test PvP Watchlist in English, the minimap button, the addons menu, the language switch
+-- and the /kos shortcut when another addon already uses that command.
 local clock = 1000
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 issecretvalue = function(v) return v == SECRET end
@@ -46,7 +46,7 @@ RaidWarningFrame = {}
 ChatTypeInfo = { RAID_WARNING = { r = 1, g = 0.3, b = 0.1 } }
 RaidNotice_AddMessage = function(_, text) table.insert(centers, clean(text)); print("  centro> " .. clean(text)) end
 
--- objetos de UI genericos: metodos CamelCase viram no-op; os que importam guardam estado
+-- generic UI objects: CamelCase methods become no-ops; the ones that matter keep state
 TEXTS = {}
 local created = { CheckButton = {}, Slider = {}, Button = {}, Frame = {} }
 local function stub(kind)
@@ -109,14 +109,14 @@ local function tick(s) local stop = clock + s; while clock < stop do clock = clo
 local function slash(msg) SlashCmdList.PVPWATCHLIST(msg) end
 local function has(pat, list) for _, m in ipairs(list or out) do if m:find(pat) then return true end end return false end
 local fails = 0
-local function check(cond, label) print((cond and "OK   " or "FALHA ") .. label); if not cond then fails = fails + 1 end end
+local function check(cond, label) print((cond and "OK   " or "FAIL ") .. label); if not cond then fails = fails + 1 end end
 local function addPlate(token, data) units[token] = data; plates[token] = stub("Plate"); fire("NAME_PLATE_UNIT_ADDED", token) end
 local function removePlate(token) fire("NAME_PLATE_UNIT_REMOVED", token); units[token] = nil end
 local function click(w, button) w.scripts.OnClick(w, button or "LeftButton") end
 local function setBox(w, v) w.checked = v; click(w) end
 local function hit() fire("UNIT_COMBAT", "player", "WOUND", "", 50, 1); tick(1) end
 
--- minimapa e tooltip que guardam o que recebem
+-- minimap and tooltip that keep what they receive
 Minimap = stub("Minimap")
 Minimap.GetWidth = function() return 140 end
 Minimap.GetHeight = function() return 140 end
@@ -133,101 +133,101 @@ local function textHas(pat) for _, s in ipairs(TEXTS) do if type(s) == "string" 
 
 units.player = { name = "Jogador", isPlayer = true, level = 30 }
 local ns = {}
-SLASH_KILLONSIGHT1 = "/kos" -- outro addon (o killonsight antigo ou o Kill on Sight) ja usa /kos
+SLASH_KILLONSIGHT1 = "/kos" -- another addon (the old killonsight or Kill on Sight) already uses /kos
 assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
 local chunk = assert(loadfile("PvPWatchlist.lua"))
 chunk("PvPWatchlist", ns)
 assert(loadfile("Share.lua"))("PvPWatchlist", ns)
 fire("ADDON_LOADED", "PvPWatchlist")
 local S = PvPWatchlistDB.settings
-check(has("^%[PvPW%] loaded: 0 marked"), "cliente em ingles: mensagem de carregamento em ingles")
+check(has("^%[PvPW%] loaded: 0 marked"), "English client: loading message in English")
 local main, list = categories[1], categories[2]
-check(main and main.name == "PvP Watchlist" and list and list.name == "Marked", "tela PvP Watchlist e subpagina em ingles: Marked")
-check(textHas("^Detection$") and textHas("^Automatically mark whoever attacks me$"), "tela de configuracoes em ingles")
-check(textHas("AddOns\\PvPWatchlist\\media\\icon") and textHas("PvP Watchlist$"), "icone e nome PvP Watchlist no titulo da tela")
+check(main and main.name == "PvP Watchlist" and list and list.name == "Marked", "PvP Watchlist screen and subpage in English: Marked")
+check(textHas("^Detection$") and textHas("^Automatically mark whoever attacks me$"), "settings screen in English")
+check(textHas("AddOns\\PvPWatchlist\\media\\icon") and textHas("PvP Watchlist$"), "PvP Watchlist icon and name in the screen title")
 S.debug = true; out = {}
 fire("PLAYER_LOGIN")
-check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/kos ocupado: nao registra o atalho")
-check(has("/kos is already used by another addon %(SLASH_KILLONSIGHT1%): use /pvpw"), "debug explica que /kos esta ocupado")
+check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/kos taken: does not register the shortcut")
+check(has("/kos is already used by another addon %(SLASH_KILLONSIGHT1%): use /pvpw"), "debug explains that /kos is taken")
 S.debug = false
-check(#created.CheckButton == 17, "17 caixas (com a do minimapa e as 5 de compartilhamento)")
+check(#created.CheckButton == 17, "17 checkboxes (with the minimap one and the 5 sharing ones)")
 
-print("-- botao do minimapa")
+print("-- minimap button")
 local mm
 for _, b in ipairs(created.Button) do if b.name == "PvPWatchlistMinimapButton" then mm = b end end
-check(mm and mm.parent == Minimap and mm.shown, "botao criado no minimapa e visivel")
-check(mm.point and mm.point[2] == Minimap, "botao posicionado em volta do minimapa")
--- 200 graus: x = cos(200)*75, y = sin(200)*75
-check(math.abs(mm.point[4] - math.cos(math.rad(200)) * 75) < 0.01 and math.abs(mm.point[5] - math.sin(math.rad(200)) * 75) < 0.01, "posicao padrao 200 graus")
+check(mm and mm.parent == Minimap and mm.shown, "button created on the minimap and visible")
+check(mm.point and mm.point[2] == Minimap, "button positioned around the minimap")
+-- 200 degrees: x = cos(200)*75, y = sin(200)*75
+check(math.abs(mm.point[4] - math.cos(math.rad(200)) * 75) < 0.01 and math.abs(mm.point[5] - math.sin(math.rad(200)) * 75) < 0.01, "default position 200 degrees")
 
-print("-- ataque em ingles")
+print("-- attack in English")
 addPlate("nameplate1", { name = "Ganker", guid = "G1", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true, class = "Rogue", level = 32 })
 out = {}; hit()
-check(has("Marked: Ganker %(Rogue 32%) attacked you at Acampamento de Nesingwary, Stranglethorn %(once%)%. %[unmark%]"), "mensagem de marcacao em ingles")
+check(has("Marked: Ganker %(Rogue 32%) attacked you at Acampamento de Nesingwary, Stranglethorn %(once%)%. %[unmark%]"), "mark message in English")
 
-print("-- clique, tooltip e arrastar")
+print("-- click, tooltip and drag")
 categories.opened = nil
 click(mm, "LeftButton")
-check(categories.opened == 42, "clique esquerdo abre as configuracoes")
+check(categories.opened == 42, "left click opens the settings")
 out = {}
 click(mm, "RightButton")
-check(S.enabled == false and has("Automatic marking off%."), "clique direito desliga a marcacao")
+check(S.enabled == false and has("Automatic marking off%."), "right click turns marking off")
 mm.scripts.OnEnter(mm)
-check(tipHas("Automatic marking: off") and tipHas("1 player%(s%) marked") and tipHas("Drag"), "tooltip do botao: estado, quantos marcados e dicas")
+check(tipHas("Automatic marking: off") and tipHas("1 player%(s%) marked") and tipHas("Drag"), "button tooltip: state, how many marked and hints")
 click(mm, "RightButton")
-check(S.enabled == true, "clique direito liga de novo")
+check(S.enabled == true, "right click turns it on again")
 mm.scripts.OnDragStart(mm)
-cursorX, cursorY = 100, 200 -- em cima do centro do minimapa: 90 graus
+cursorX, cursorY = 100, 200 -- above the minimap center: 90 degrees
 mm.scripts.OnUpdate(mm)
 mm.scripts.OnDragStop(mm)
-check(S.minimapAngle == 90, "arrastar para cima grava 90 graus: " .. tostring(S.minimapAngle))
-check(math.abs(mm.point[4]) < 0.01 and math.abs(mm.point[5] - 75) < 0.01, "botao foi para o topo do minimapa")
+check(S.minimapAngle == 90, "dragging up stores 90 degrees: " .. tostring(S.minimapAngle))
+check(math.abs(mm.point[4]) < 0.01 and math.abs(mm.point[5] - 75) < 0.01, "button moved to the top of the minimap")
 
-print("-- menu de addons (compartment)")
+print("-- addons menu (compartment)")
 categories.opened = nil
 PvPWatchlist_OnAddonCompartmentClick("PvPWatchlist", "LeftButton")
-check(categories.opened == 42, "menu de addons: clique abre as configuracoes")
+check(categories.opened == 42, "addons menu: click opens the settings")
 tipLines = {}
 PvPWatchlist_OnAddonCompartmentEnter("PvPWatchlist", stub("MenuButton"))
-check(tipHas("PvP Watchlist") and tipHas("Automatic marking: on") and not tipHas("Drag"), "menu de addons: tooltip sem a dica de arrastar")
+check(tipHas("PvP Watchlist") and tipHas("Automatic marking: on") and not tipHas("Drag"), "addons menu: tooltip without the drag hint")
 PvPWatchlist_OnAddonCompartmentLeave()
 
-print("-- esconder o botao")
+print("-- hide the button")
 out = {}; slash("minimap")
-check(S.minimap == false and mm.shown == false and has("Minimap button off%."), "/kos minimap esconde o botao")
+check(S.minimap == false and mm.shown == false and has("Minimap button off%."), "/kos minimap hides the button")
 local box = created.CheckButton[10]
 box.checked = true; click(box)
-check(S.minimap == true and mm.shown == true, "caixa Show minimap button mostra de novo")
+check(S.minimap == true and mm.shown == true, "Show minimap button checkbox shows it again")
 
-print("-- comandos nos dois idiomas")
+print("-- commands in both languages")
 out = {}; slash("list"); check(has("1 marked, newest first:"), "/kos list")
-out = {}; slash("lista"); check(has("1 marked, newest first:"), "/kos lista tambem funciona em ingles")
-out = {}; slash(""); check(has("Commands") and has("/pvpw language auto | pt | en"), "ajuda em ingles")
-out = {}; slash("language xx"); check(has("Use /pvpw language auto | pt | en"), "idioma invalido mostra o uso")
+out = {}; slash("lista"); check(has("1 marked, newest first:"), "/kos lista also works in English")
+out = {}; slash(""); check(has("Commands") and has("/pvpw language auto | pt | en"), "help in English")
+out = {}; slash("language xx"); check(has("Use /pvpw language auto | pt | en"), "invalid language shows the usage")
 
-print("-- troca de idioma")
+print("-- language switch")
 out = {}; slash("language pt")
-check(S.language == "ptBR" and has("Idioma: Português%. Use /reload"), "/kos language pt muda para portugues")
-out = {}; slash("lista"); check(has("1 marcado%(s%), do mais recente:"), "mensagens agora em portugues")
+check(S.language == "ptBR" and has("Idioma: Português%. Use /reload"), "/kos language pt switches to Portuguese")
+out = {}; slash("lista"); check(has("1 marcado%(s%), do mais recente:"), "messages now in Portuguese")
 local tip = stub("Tooltip"); tip.lines = {}
 tip.GetUnit = function() return "Ganker", "nameplate1" end
 tip.AddLine = function(self, s) table.insert(self.lines, s) end
 GameTooltip = tip
 tooltipHook(tip)
-check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: te atacou 1 vez"), "tooltip do jogador em portugues: " .. tostring(tip.lines[1]))
+check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: te atacou 1 vez"), "player tooltip in Portuguese: " .. tostring(tip.lines[1]))
 out = {}; slash("idioma auto")
-check(S.language == "auto" and has("Language: Automatic"), "/kos idioma auto volta ao idioma do jogo (ingles)")
+check(S.language == "auto" and has("Language: Automatic"), "/kos idioma auto goes back to the game language (English)")
 tip.lines = {}; tooltipHook(tip)
-check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: attacked you once, last time on %a%a%a %d%d"), "tooltip em ingles com data por extenso: " .. tostring(tip.lines[1]))
--- botao de idioma na tela: auto -> Português
-local langBtn = created.Button[8] -- depois dos 3 icones (sua lista, amigos, guilda)
+check(tip.lines[1] and tip.lines[1]:find("^PvP Watchlist: attacked you once, last time on %a%a%a %d%d"), "tooltip in English with spelled-out date: " .. tostring(tip.lines[1]))
+-- language button on the screen: auto -> Português
+local langBtn = created.Button[8] -- after the 3 icons (your list, friends, guild)
 out = {}; click(langBtn)
-check(S.language == "ptBR" and langBtn.text == "Português" and has("Idioma: Português"), "botao Language na tela troca para portugues")
+check(S.language == "ptBR" and langBtn.text == "Português" and has("Idioma: Português"), "Language button on the screen switches to Portuguese")
 click(langBtn); click(langBtn)
-check(S.language == "auto" and langBtn.text == "Automatic (game's)", "botao Language volta para automatico")
+check(S.language == "auto" and langBtn.text == "Automatic (game's)", "Language button goes back to automatic")
 
-print("-- cliente em portugues de Portugal cai no portugues")
+print("-- European Portuguese client falls back to Portuguese")
 GetLocale = function() return "ptPT" end
 out = {}; slash("idioma auto"); out = {}; slash("lista")
-check(has("marcado%(s%)"), "ptPT usa o portugues")
-print(fails == 0 and "TUDO OK" or (fails .. " FALHA(S)"))
+check(has("marcado%(s%)"), "ptPT uses Portuguese")
+print(fails == 0 and "ALL OK" or (fails .. " FAIL(S)"))

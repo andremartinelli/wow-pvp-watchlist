@@ -1,4 +1,4 @@
--- Simulacao minima da API do WoW para testar o PvP Watchlist fora do jogo.
+-- Minimal simulation of the WoW API to test PvP Watchlist outside the game.
 local clock = 1000
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
 issecretvalue = function(v) return v == SECRET end
@@ -66,7 +66,7 @@ local function tick(seconds) local stop = clock + seconds; while clock < stop do
 local function slash(msg) SlashCmdList.PVPWATCHLIST(msg) end
 local function has(pat) for _, m in ipairs(out) do if m:find(pat) then return true end end return false end
 local fails = 0
-local function check(cond, label) print((cond and "OK   " or "FALHA ") .. label); if not cond then fails = fails + 1 end end
+local function check(cond, label) print((cond and "OK   " or "FAIL ") .. label); if not cond then fails = fails + 1 end end
 local function addPlate(token, data) units[token] = data; plates[token] = newPlate(); fire("NAME_PLATE_UNIT_ADDED", token) end
 local function removePlate(token) fire("NAME_PLATE_UNIT_REMOVED", token); units[token] = nil end
 
@@ -75,37 +75,37 @@ local ns = {}
 assert(loadfile("Locales.lua"))("PvPWatchlist", ns)
 local chunk = assert(loadfile("PvPWatchlist.lua"))
 chunk("PvPWatchlist", ns)
-assert(loadfile("Share.lua"))("PvPWatchlist", ns) -- sem API de mensagens de addon aqui: o compartilhamento fica parado
+assert(loadfile("Share.lua"))("PvPWatchlist", ns) -- no addon message API here: sharing stays idle
 fire("ADDON_LOADED", "killonsight")
-check(not PvPWatchlistDB, "ignora o ADDON_LOADED de outro addon (killonsight)")
+check(not PvPWatchlistDB, "ignores ADDON_LOADED from another addon (killonsight)")
 fire("ADDON_LOADED", "PvPWatchlist")
-check(has("^%[PvPW%] carregado: 0"), "carrega com 0 marcados e prefixo [PvPW]")
-check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/pvpw registrado; /kos so depois do login")
+check(has("^%[PvPW%] carregado: 0"), "loads with 0 marked and the [PvPW] prefix")
+check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/pvpw registered; /kos only after login")
 fire("PLAYER_LOGIN")
-check(SLASH_PVPWATCHLIST2 == "/kos", "/kos livre: vira atalho no login")
+check(SLASH_PVPWATCHLIST2 == "/kos", "/kos is free: becomes a shortcut on login")
 
-print("-- 1. Horda te ataca primeiro")
+print("-- 1. Horde attacks you first")
 addPlate("nameplate1", { name = "Ganker", guid = "Player-1-AAA", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true, class = "Ladino", level = 32, guild = "Horda Malvada" })
 out = {}
 fire("UNIT_COMBAT", "player", "WOUND", "", 120, 1); tick(1)
-check(has("Marcado: Ganker %(Ladino 32, <Horda Malvada>%) te atacou em Acampamento de Nesingwary, Stranglethorn %(1 vez%)"), "marca o atacante")
-check(plates.nameplate1.kosSkull and plates.nameplate1.kosSkull.shown, "caveira na barra de nome")
-check(sounds == 1, "tocou som ao marcar")
+check(has("Marcado: Ganker %(Ladino 32, <Horda Malvada>%) te atacou em Acampamento de Nesingwary, Stranglethorn %(1 vez%)"), "marks the attacker")
+check(plates.nameplate1.kosSkull and plates.nameplate1.kosSkull.shown, "skull on the nameplate")
+check(sounds == 1, "played a sound when marking")
 out = {}; tick(3)
-check(not has("Marcado"), "nao repete a marcacao na mesma luta")
+check(not has("Marcado"), "does not repeat the mark in the same fight")
 
-print("-- 2. Ele some e volta 7 minutos depois")
+print("-- 2. He disappears and comes back 7 minutes later")
 removePlate("nameplate1"); clock = clock + 420
 units.nameplate1 = nil
 out = {}
 addPlate("nameplate3", { name = "Ganker", guid = "Player-1-AAA", isPlayer = true, enemy = true, canAttack = true, target = nil, combat = false, class = "Ladino", level = 32, guild = "Horda Malvada" })
-check(has("Apareceu: Ganker"), "avisa quando aparece")
-check(plates.nameplate3.kosSkull and plates.nameplate3.kosSkull.shown, "caveira na nova barra de nome")
+check(has("Apareceu: Ganker"), "warns when he shows up")
+check(plates.nameplate3.kosSkull and plates.nameplate3.kosSkull.shown, "skull on the new nameplate")
 out = {}; removePlate("nameplate3"); addPlate("nameplate3", units.nameplate3 or { name = "Ganker", guid = "Player-1-AAA", isPlayer = true, enemy = true, canAttack = true })
-check(not has("Apareceu"), "nao repete o aviso em menos de 5 min")
+check(not has("Apareceu"), "does not repeat the warning within 5 min")
 removePlate("nameplate3")
 
-print("-- 3. Voce ataca primeiro e ele revida")
+print("-- 3. You attack first and he fights back")
 slash("debug")
 addPlate("nameplate2", { name = "Vitima", guid = "Player-1-BBB", isPlayer = true, enemy = true, canAttack = true, target = nil, combat = false, class = "Mago", level = 30 })
 units.target = units.nameplate2
@@ -114,59 +114,59 @@ clock = clock + 2
 units.nameplate2.target = "player"; units.nameplate2.combat = true
 out = {}
 fire("UNIT_COMBAT", "player", "WOUND", "", 80, 1); tick(1)
-check(not has("Marcado: Vitima"), "nao marca quem so revidou")
-check(has("revidou"), "debug explica por que nao marcou")
+check(not has("Marcado: Vitima"), "does not mark someone who only fought back")
+check(has("revidou"), "debug explains why it did not mark")
 removePlate("nameplate2"); units.target = nil
 
-print("-- 4. Monstro te bate e um Horda so esta olhando")
+print("-- 4. A monster hits you and a Horde player is just watching")
 addPlate("nameplate4", { name = "Curioso", guid = "Player-1-CCC", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = false })
 out = {}
 fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not has("Marcado: Curioso"), "nao marca Horda fora de combate")
+check(not has("Marcado: Curioso"), "does not mark a Horde player out of combat")
 removePlate("nameplate4")
 
-print("-- 5. Duelo com amigo da Alianca")
+print("-- 5. Duel with an Alliance friend")
 addPlate("nameplate5", { name = "Amigo", guid = "Player-1-DDD", isPlayer = true, enemy = false, canAttack = true, target = "player", combat = true })
 out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not has("Marcado: Amigo"), "sem modo teste, duelo nao marca")
+check(not has("Marcado: Amigo"), "without test mode, a duel does not mark")
 slash("teste"); clock = clock + 10
 out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(has("Marcado: Amigo"), "com modo teste, duelo marca")
+check(has("Marcado: Amigo"), "with test mode, a duel marks")
 slash("teste"); removePlate("nameplate5")
 
-print("-- 6. Jogo esconde quem te mira (valor secreto)")
+print("-- 6. The game hides who is targeting you (secret value)")
 secretTargeting = true
 addPlate("nameplate6", { name = "Sombra", guid = "Player-1-EEE", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true })
 out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(has("Marcado: Sombra"), "um inimigo so: marca mesmo sem saber o alvo")
+check(has("Marcado: Sombra"), "a single enemy: marks even without knowing the target")
 addPlate("nameplate7", { name = "Outro", guid = "Player-1-FFF", isPlayer = true, enemy = true, canAttack = true, target = "player", combat = true })
 clock = clock + 200
 out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not has("Marcado: Outro"), "dois inimigos e alvo secreto: nao marca ninguem")
+check(not has("Marcado: Outro"), "two enemies and a secret target: marks nobody")
 secretTargeting = false; removePlate("nameplate6"); removePlate("nameplate7")
 
-print("-- 7. Comandos")
-out = {}; slash("lista"); check(has("3 marcado"), "lista mostra 3 marcados")
+print("-- 7. Commands")
+out = {}; slash("lista"); check(has("3 marcado"), "list shows 3 marked")
 units.target = { name = "Ganker", guid = "Player-1-AAA", isPlayer = true, enemy = true, canAttack = true }
-out = {}; slash("tirar"); check(has("Ganker desmarcado"), "/kos tirar desmarca o alvo")
+out = {}; slash("tirar"); check(has("Ganker desmarcado"), "/kos tirar unmarks the target")
 out = {}; SetItemRef("addon:killonsight:unmark:sombra", "[desmarcar]", "LeftButton")
-check(not has("desmarcado"), "link do addon antigo (killonsight) e ignorado")
+check(not has("desmarcado"), "link from the old addon (killonsight) is ignored")
 out = {}; SetItemRef("addon:PvPWatchlist:unmark:sombra", "[desmarcar]", "LeftButton")
-check(has("Sombra desmarcado"), "link [desmarcar] funciona")
-out = {}; slash("apagar amigo"); check(has("Amigo desmarcado"), "/kos apagar Nome")
-out = {}; slash("lista"); check(has("Ninguém marcado"), "lista vazia no fim")
+check(has("Sombra desmarcado"), "[desmarcar] link works")
+out = {}; slash("apagar amigo"); check(has("Amigo desmarcado"), "/kos apagar Name")
+out = {}; slash("lista"); check(has("Ninguém marcado"), "empty list at the end")
 units.target = { name = "Novo", guid = "Player-1-GGG", isPlayer = true, enemy = true, canAttack = true, class = "Guerreiro", level = 34 }
 out = {}; slash("marcar"); check(has("Marcado à mão: Novo"), "/kos marcar")
-out = {}; slash(""); check(has("Comandos"), "ajuda")
+out = {}; slash(""); check(has("Comandos"), "help")
 
--- Casos reais de 21/11/2026 (registro de combate): voce lancou Ruina da Agonia primeiro e o addon marcou mesmo assim.
--- No Forever o nome do alvo da magia e a magia podem vir secretos ou com reino e sufixo ("Fedrath-Vorn-JxJ-US").
--- Como no jogo: valor secreto entra, valor secreto sai. 99 e uma magia de ajuda (cura/buff).
+-- Real cases from 11/21/2026 (combat log): you cast Curse of Agony first and the addon marked them anyway.
+-- In Forever the spell target name and the spell can come secret or with realm and suffix ("Fedrath-Vorn-JxJ-US").
+-- As in the game: secret value in, secret value out. 99 is a helpful spell (heal/buff).
 C_Spell = {
   IsSpellHarmful = function(id) if id == SECRET then return SECRET end return id ~= 99 end,
   IsSpellHelpful = function(id) if id == SECRET then return SECRET end return id == 99 end,
 }
--- Auras: so responde para "HARMFUL|PLAYER" quando a unidade tem uma magia sua (myDebuff).
+-- Auras: only answers for "HARMFUL|PLAYER" when the unit has a spell of yours (myDebuff).
 C_UnitAuras = { GetAuraDataByIndex = function(u, i, filter)
   local r = resolve(u)
   if r and r.myDebuff and i == 1 and filter == "HARMFUL|PLAYER" then return { name = r.myDebuff } end
@@ -178,35 +178,35 @@ local function enemy(name, realm, guid, extra)
 end
 local function marked(name) return has("Marcado: " .. name) end
 
-print("-- 8. Fedrath: sua maldicao com nome do alvo e magia secretos, e voce entra em combate por causa dela")
+print("-- 8. Fedrath: your curse with secret target name and spell, and you enter combat because of it")
 clock = clock + 400; units.target = nil
 addPlate("nameplate8", enemy("Fedrath", "Vorn", "Player-6800-00ABDEB4", { class = "Mago", level = 21 }))
 units.target = units.nameplate8
 out = {}
 fire("UNIT_SPELLCAST_SENT", "player", SECRET, "c8", SECRET)
 fire("UNIT_SPELLCAST_SUCCEEDED", "player", "c8", SECRET)
-check(has("você atacou Fedrath%-Vorn"), "magia com dados secretos conta como ataque ao seu alvo")
+check(has("você atacou Fedrath%-Vorn"), "a spell with secret data counts as an attack on your target")
 units.nameplate8.target = "player"; units.nameplate8.combat = true
 fire("PLAYER_REGEN_DISABLED"); tick(3)
-check(has("entrou em combate por ação sua") and not marked("Fedrath"), "entrar em combate pela sua maldicao nao inicia a procura")
+check(has("entrou em combate por ação sua") and not marked("Fedrath"), "entering combat through your own curse does not start the search")
 out = {}; clock = clock + 2
 fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not marked("Fedrath") and has("Fedrath%-Vorn revidou"), "um golpe de monstro depois: Fedrath continua sem marca (revidou)")
+check(not marked("Fedrath") and has("Fedrath%-Vorn revidou"), "a monster hit afterwards: Fedrath stays unmarked (fought back)")
 
-print("-- 9. Leigong: o jogo da o nome com reino e sufixo, o alvo vem sem reino")
+print("-- 9. Leigong: the game gives the name with realm and suffix, the target comes without realm")
 units.target = nil; removePlate("nameplate8"); clock = clock + 400
 addPlate("nameplate9", enemy("Leigong", "Tutu", "Player-1-LEI"))
 units.target = units.nameplate9
 out = {}
 fire("UNIT_SPELLCAST_SENT", "player", "Leigong-Tutu-JxJ-US", "c9", 6217)
-check(has("você atacou Leigong%-Tutu"), "nome 'Leigong-Tutu-JxJ-US' reconhecido")
+check(has("você atacou Leigong%-Tutu"), "name 'Leigong-Tutu-JxJ-US' recognized")
 units.nameplate9.target = "player"; units.nameplate9.combat = true
 clock = clock + 1.5
 fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not marked("Leigong"), "Leigong nao e marcado")
+check(not marked("Leigong"), "Leigong is not marked")
 units.target = nil; removePlate("nameplate9")
 
-print("-- 10. Staz: o jogo da o nome do alvo sem reino e o da unidade com reino; ele revida 15 s depois")
+print("-- 10. Staz: the game gives the target name without realm and the unit name with realm; he fights back 15 s later")
 clock = clock + 400
 addPlate("nameplate10", enemy("Staz", "Exanime", "Player-1-STZ"))
 units.target = units.nameplate10
@@ -214,20 +214,20 @@ fire("UNIT_SPELLCAST_SENT", "player", "Staz", "c10", 6217)
 clock = clock + 15
 units.nameplate10.target = "player"; units.nameplate10.combat = true
 out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not marked("Staz"), "revidou depois de 15 s: nao marca")
+check(not marked("Staz"), "fought back after 15 s: does not mark")
 units.target = nil; removePlate("nameplate10")
 
-print("-- 11. Mesmo GUID com o nome em outro formato")
+print("-- 11. Same GUID with the name in another format")
 clock = clock + 400
 units.target = enemy("Duplo", nil, "Player-1-DUP")
 fire("UNIT_SPELLCAST_SENT", "player", "Duplo", "c11", 6217)
 units.target = nil
 addPlate("nameplate11", enemy("Duplo", "OutroReino", "Player-1-DUP", { target = "player", combat = true }))
 out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(not marked("Duplo"), "reconhece pelo GUID mesmo com a chave diferente")
+check(not marked("Duplo"), "recognizes by GUID even with a different key")
 removePlate("nameplate11")
 
-print("-- 12. Quem ataca de verdade continua sendo marcado")
+print("-- 12. Whoever really attacks is still marked")
 clock = clock + 400
 addPlate("nameplate12", enemy("Fedrath", "Vorn", "Player-6800-00ABDEB4"))
 units.target = units.nameplate12
@@ -236,46 +236,46 @@ units.nameplate12.target = "player"; units.nameplate12.combat = true
 addPlate("nameplate13", enemy("Jeskai", "Javi", "Player-1-JES", { target = "player", combat = true }))
 out = {}; clock = clock + 0.5
 fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(marked("Jeskai") and not marked("Fedrath"), "Jeskai te bateu: marcado; Fedrath (voce atacou) nao")
+check(marked("Jeskai") and not marked("Fedrath"), "Jeskai hit you: marked; Fedrath (you attacked) not")
 units.target = nil; removePlate("nameplate12"); removePlate("nameplate13")
 
-print("-- 13. Cura ou buff com um inimigo no alvo nao conta como ataque")
+print("-- 13. A heal or buff with an enemy targeted does not count as an attack")
 clock = clock + 400
 addPlate("nameplate14", enemy("Atacante", "Reino", "Player-1-ATK"))
 units.target = units.nameplate14
 out = {}; fire("UNIT_SPELLCAST_SENT", "player", SECRET, "c14", 99)
-check(not has("você atacou Atacante"), "magia de ajuda (99) nao e guardada como ataque")
+check(not has("você atacou Atacante"), "helpful spell (99) is not stored as an attack")
 units.nameplate14.target = "player"; units.nameplate14.combat = true
 clock = clock + 3
 fire("UNIT_COMBAT", "player", "WOUND", "", 30, 1); tick(1)
-check(marked("Atacante"), "ele te ataca depois: marcado")
+check(marked("Atacante"), "he attacks you afterwards: marked")
 units.target = nil; removePlate("nameplate14")
 
-print("-- 13b. Os eventos de magia nao chegam: a sua maldicao nele basta")
+print("-- 13b. The spell events never arrive: your curse on him is enough")
 clock = clock + 400
 addPlate("nameplate16", enemy("Semevento", "Reino", "Player-1-SEM", { target = "player", combat = true, myDebuff = "Ruína da Agonia" }))
 out = {}; fire("PLAYER_REGEN_DISABLED"); tick(1)
-check(not marked("Semevento") and has("Semevento%-Reino revidou"), "tem Ruina da Agonia sua: nao marca, mesmo sem nenhum evento de magia")
+check(not marked("Semevento") and has("Semevento%-Reino revidou"), "has your Curse of Agony: does not mark, even with no spell event")
 removePlate("nameplate16")
 
-print("-- 13c. Magia so com o fim (SUCCEEDED) legivel, e o evento de unidade secreto")
+print("-- 13c. Spell with only the end (SUCCEEDED) readable, and the unit event secret")
 clock = clock + 400
 addPlate("nameplate17", enemy("Fimdamagia", "Reino", "Player-1-FIM"))
 units.target = units.nameplate17
 out = {}
 fire("UNIT_SPELLCAST_SENT", SECRET, SECRET, "c17", SECRET)
 fire("UNIT_SPELLCAST_SUCCEEDED", SECRET, "c17", 6217)
-check(has("você atacou Fimdamagia%-Reino"), "o fim da magia ofensiva guarda o ataque")
+check(has("você atacou Fimdamagia%-Reino"), "the end of the offensive spell stores the attack")
 units.nameplate17.target = "player"; units.nameplate17.combat = true
 clock = clock + 3
 fire("UNIT_COMBAT", SECRET, "WOUND", "", 30, 1); tick(1)
-check(not marked("Fimdamagia"), "golpe com unidade secreta inicia a procura, e ele nao e marcado")
+check(not marked("Fimdamagia"), "a hit with a secret unit starts the search, and he is not marked")
 units.target = nil; removePlate("nameplate17")
 
-print("-- 14. Entrar em combate sem acao sua ainda inicia a procura (ex.: atordoado por um ladino)")
+print("-- 14. Entering combat without any action of yours still starts the search (e.g. stunned by a rogue)")
 clock = clock + 400
 addPlate("nameplate15", enemy("Ladino", "Reino", "Player-1-ROG", { target = "player", combat = true }))
 out = {}; fire("PLAYER_REGEN_DISABLED"); tick(1)
-check(marked("Ladino"), "sem acao sua antes: procura e marca")
+check(marked("Ladino"), "no action of yours before: searches and marks")
 removePlate("nameplate15")
-print(fails == 0 and "TUDO OK" or (fails .. " FALHA(S)"))
+print(fails == 0 and "ALL OK" or (fails .. " FAIL(S)"))

@@ -73,17 +73,17 @@ Every command works in English and Portuguese. `/kos` works too, if no other add
 The `tests` folder simulates the game API to test the addon outside the game. Run them from the main folder with Lua 5.1 to 5.4:
 
 ```
-lua tests/test_kos.lua
-lua tests/test_kos2.lua
-lua tests/test_kos3.lua
-lua tests/test_kos4.lua
+lua tests/test_detection.lua
+lua tests/test_settings.lua
+lua tests/test_locale.lua
+lua tests/test_sharing.lua
 ```
 
-Test 4 covers sharing with friends, guild and Battle.net.
+`test_sharing.lua` covers sharing with friends, guild and Battle.net.
 
-Each test ends with `TUDO OK` when everything passes.
+Each test ends with `ALL OK` when everything passes.
 
-**On Linux and in Claude Code cloud sessions:** `bash scripts/cloud-setup.sh` installs Lua 5.1 (the version WoW uses) through apt and can run as many times as you want. Then `bash scripts/test.sh` runs the four tests and exits with an error if any of them does not reach `TUDO OK`. The addon has no database, services or `.env`, so there is nothing else to set up.
+**On Linux and in Claude Code cloud sessions:** `bash scripts/cloud-setup.sh` installs Lua 5.1 (the version WoW uses) through apt and can run as many times as you want. Then `bash scripts/test.sh` runs the four tests and exits with an error if any of them does not reach `ALL OK`. The addon has no database, services or `.env`, so there is nothing else to set up.
 
 ## Publishing
 
