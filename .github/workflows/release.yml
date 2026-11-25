@@ -1,5 +1,5 @@
-# Empacota o addon e publica no GitHub Releases e no CurseForge quando uma tag v* e enviada (ex.: v1.4.0).
-# O CurseForge so recebe o arquivo depois que o ## X-Curse-Project-ID estiver no .toc e o secret CF_API_KEY existir.
+# Packages the addon and publishes it to GitHub Releases and CurseForge when a v* tag is pushed (e.g. v1.4.0).
+# CurseForge only gets the file once ## X-Curse-Project-ID is in the .toc and the CF_API_KEY secret exists.
 name: Release
 
 on:
@@ -7,7 +7,7 @@ on:
     tags:
       - 'v*'
 
-# O GITHUB_TOKEN vem so com leitura por padrao; o packager precisa escrever para criar o release.
+# GITHUB_TOKEN is read-only by default; the packager needs write access to create the release.
 permissions:
   contents: write
 
@@ -21,6 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # historico completo para o changelog
+          fetch-depth: 0 # full history for the changelog
 
       - uses: BigWigsMods/packager@v2

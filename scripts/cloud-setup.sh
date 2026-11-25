@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Prepara um Linux Debian/Ubuntu (como as sessoes na nuvem do Claude Code) para rodar os testes do addon.
-# Idempotente e nao interativo: pode rodar quantas vezes quiser, de qualquer pasta.
-# O addon nao tem banco, servicos nem .env: so precisa do Lua 5.1, a mesma versao que o WoW usa.
+# Prepares a Debian/Ubuntu Linux (like the Claude Code cloud sessions) to run the addon tests.
+# Idempotent and non-interactive: safe to run any number of times, from any folder.
+# The addon has no database, services or .env: it only needs Lua 5.1, the same version WoW uses.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
