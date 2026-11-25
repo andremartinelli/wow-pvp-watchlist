@@ -1,14 +1,14 @@
--- PvP Watchlist: troca de marcados com amigos e guilda.
--- Usa mensagens de addon, que nao aparecem no chat de ninguem: nada e feito no jogo em nome de ninguem.
--- Envia so as SUAS marcacoes confiaveis (o atacante estava com voce no alvo, ou foi marcado a mao), nunca o que
--- recebeu de outros. Recebe so de quem esta na sua guilda ou na sua lista de amigos (e do Battle.net, se ligado).
--- O jogo bloqueia mensagens de addon em instancias; fora delas a fila espera o fim do combate e do bloqueio de chat.
+-- PvP Watchlist: sharing marks with friends and guild.
+-- Uses addon messages, which never show up in anyone's chat: nothing is done in the game on anyone's behalf.
+-- Sends only YOUR reliable marks (the attacker had you targeted, or was marked by hand), never what you
+-- received from others. Receives only from players in your guild or on your friends list (and Battle.net, if on).
+-- The game blocks addon messages in instances; outside them the queue waits for combat and the chat lockout to end.
 --
--- Mensagens (campos separados por \031):
---   H1                                                             pede a lista de quem recebe (login)
---   M1 nome guid classe CLASSE nivel guilda vezes ultima onde reino   marcacao nova ou atualizada
---   U1 nome reino                                                  desmarcou
--- Recebidas ficam em db.shared.friends / db.shared.guild [chave] = { nome, classe..., from = { [remetente] = {...} } }.
+-- Messages (fields separated by \031):
+--   H1                                                             asks the receiver for their list (login)
+--   M1 name guid class CLASS level guild times last where realm      new or updated mark
+--   U1 name realm                                                  unmarked
+-- Received ones are kept in db.shared.friends / db.shared.guild [key] = { name, class..., from = { [sender] = {...} } }.
 
 local _, ns = ...
 ns = ns or {}
@@ -17,12 +17,12 @@ if not core then return end
 
 local PREFIX = "PvPW"
 local SEP = "\031"
-local SEND_GAP = 1.0          -- segundos entre mensagens (o jogo limita o ritmo por prefixo)
-local HELLO_DELAY = 10        -- espera depois do login antes de pedir as listas
-local EXPIRE = 30 * 86400     -- marcacao recebida some depois de 30 dias sem novidade
+local SEND_GAP = 1.0          -- seconds between messages (the game throttles per prefix)
+local HELLO_DELAY = 10        -- wait after login before asking for the lists
+local EXPIRE = 30 * 86400     -- a received mark disappears after 30 days without news
 local MAX_QUEUE = 400
 local MAX_TRIES = 5
-local MAX_LEN = 255           -- tamanho maximo de uma mensagem de addon
+local MAX_LEN = 255           -- maximum size of an addon message
 
 local L, safe, isSecret, say, debug = core.L, core.safe, core.isSecret, core.say, core.debug
 
@@ -36,9 +36,9 @@ local function DB() return core.db() end
 local function S() return core.settings() end
 local function circleLabel(circle) return circle == "guild" and L.SRC_GUILD or L.SRC_FRIENDS end
 
--- ---------------------------------------------------------------- textos e nomes
+-- ---------------------------------------------------------------- texts and names
 
--- Corta em ate n bytes sem quebrar um caractere UTF-8 no meio.
+-- Cuts to at most n bytes without splitting a UTF-8 character.
 local function cut(s, n)
     if #s <= n then return s end
     s = s:sub(1, n)
@@ -69,14 +69,14 @@ local function myRealm()
     return (r:gsub("[%s%-]", ""))
 end
 
--- "Nome-Reino" em minusculas, para comparar remetentes.
+-- "Name-Realm" in lowercase, to compare senders.
 local function fullName(name)
     if type(name) ~= "string" or name == "" then return nil end
     if not name:find("-", 1, true) then name = name .. "-" .. myRealm() end
     return string.lower(name)
 end
 
--- Tira o "-SeuReino" do fim para mostrar.
+-- Strips the trailing "-YourRealm" for display.
 local function shortName(name)
     local n, r = name:match("^([^%-]+)%-(.+)$")
     if n and string.lower(r) == string.lower(myRealm()) then return n end
@@ -85,7 +85,7 @@ end
 
 local function me() return fullName((safe(UnitName, "player"))) end
 
--- Nome do alvo como ele aparece para voce: sem reino se for do seu reino.
+-- Target name as it appears to you: without realm if it is from your realm.
 local function localTarget(display, senderRealm)
     local name, realm = display:match("^([^%-]+)%-(.+)$")
     if not name then name, realm = display, senderRealm end
@@ -95,7 +95,7 @@ local function localTarget(display, senderRealm)
     return name
 end
 
--- ---------------------------------------------------------------- quem e amigo ou da guilda
+-- ---------------------------------------------------------------- who is a friend or in the guild
 
 local function inGuild(senderKey)
     if not senderKey or not safe(IsInGuild) then return false end
@@ -131,7 +131,7 @@ local function onlineFriends()
     return out
 end
 
--- Contas do Battle.net online no mesmo jogo (WoW: Forever).
+-- Battle.net accounts online in the same game (WoW: Forever).
 local function bnetAccounts()
     local out = {}
     if not (BNGetNumFriends and BNSendGameData and C_BattleNet and C_BattleNet.GetFriendNumGameAccounts
@@ -149,7 +149,7 @@ local function bnetAccounts()
     return out
 end
 
--- ---------------------------------------------------------------- fila de envio
+-- ---------------------------------------------------------------- send queue
 
 local function enqueue(text, kind, target)
     if #text > MAX_LEN then return end
@@ -160,7 +160,7 @@ local function enqueue(text, kind, target)
     table.insert(queue, { text = text, kind = kind, target = target })
 end
 
--- Para todos os circulos ligados. Quem e da guilda ja recebe pelo canal da guilda.
+-- For all circles that are on. Guild members already receive through the guild channel.
 local function broadcast(text)
     local s = S()
     local guildOn = s.shareGuild and safe(IsInGuild)
@@ -177,7 +177,7 @@ end
 
 local function canSend()
     if not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then return false end
-    if not core.inWorld() then return false end                 -- o jogo bloqueia em instancias
+    if not core.inWorld() then return false end                 -- the game blocks this in instances
     if safe(UnitAffectingCombat, "player") then return false end
     if C_ChatInfo.InChatMessagingLockdown then
         local ok, locked = pcall(C_ChatInfo.InChatMessagingLockdown)
@@ -186,7 +186,7 @@ local function canSend()
     return true
 end
 
--- true = pode tirar da fila (enviada ou erro sem volta); false = tentar de novo depois (limite de ritmo).
+-- true = can leave the queue (sent or a permanent error); false = try again later (rate limit).
 local function sendOne(q)
     local ok, res
     if q.kind == "BN" then
@@ -219,7 +219,7 @@ end
 
 function share.pending() return #queue end
 
--- ---------------------------------------------------------------- o que sai
+-- ---------------------------------------------------------------- outgoing
 
 local function shareable(e) return e.shareable or e.how == "alvo" or e.how == "manual" end
 
@@ -237,7 +237,7 @@ local function sendListTo(kind, target)
     end
 end
 
--- Manda a sua lista (e, no login, pede a dos outros). Devolve quantas mensagens foram para a fila, ou nil se desligado.
+-- Sends your list (and, at login, asks for the others'). Returns how many messages went to the queue, or nil if off.
 function share.syncNow(withHello)
     local s = S()
     if not (s.shareGuild or s.shareFriends or s.shareBnet) then return nil end
@@ -262,9 +262,9 @@ function share.onUnmark(key, e)
     if e and shareable(e) then broadcast(packUnmark(e)) end
 end
 
--- ---------------------------------------------------------------- o que chega
+-- ---------------------------------------------------------------- incoming
 
--- Os dados que aparecem vem do remetente com a marcacao mais recente.
+-- The data shown comes from the sender with the most recent mark.
 local function recompute(e)
     local best
     for _, r in pairs(e.from or {}) do
@@ -282,7 +282,7 @@ local function upsert(circle, senderKey, senderName, f)
     local key = string.lower(tname)
     local guid = (f[3] ~= "" and f[3]) or nil
     local e = list[key]
-    if e and e.guid and guid and e.guid ~= guid then e = nil end -- outro personagem com o mesmo nome
+    if e and e.guid and guid and e.guid ~= guid then e = nil end -- another character with the same name
     e = e or {}
     e.from = e.from or {}
     local last = tonumber(f[9]) or 0
@@ -295,7 +295,7 @@ local function upsert(circle, senderKey, senderName, f)
     e.level = tonumber(f[6]) or e.level
     e.guild = (f[7] ~= "" and f[7]) or e.guild
     e.from[senderKey] = { n = senderName, count = tonumber(f[8]) or 1, last = last, where = (f[10] ~= "" and f[10]) or nil }
-    if e.hidden and last > (e.hiddenLast or 0) then e.hidden, e.hiddenLast = nil, nil end -- atacou de novo
+    if e.hidden and last > (e.hiddenLast or 0) then e.hidden, e.hiddenLast = nil, nil end -- attacked again
     recompute(e)
     list[key] = e
     debug(string.format(L.DBG_SHARE_GOT, senderName, tname, circleLabel(circle)))
@@ -369,9 +369,9 @@ function share.onEvent(event, ...)
     end
 end
 
--- ---------------------------------------------------------------- ocultar, bloquear, limpar
+-- ---------------------------------------------------------------- hide, block, clear
 
--- Some da tela ate o mesmo jogador ser marcado de novo depois disso.
+-- Disappears from the screen until the same player is marked again after that.
 function share.hide(circle, key)
     local list = DB().shared[circle]
     local e = list and list[key]
@@ -381,7 +381,7 @@ function share.hide(circle, key)
     core.refresh()
 end
 
--- Remetentes que batem com o nome digitado (com ou sem reino).
+-- Senders that match the typed name (with or without realm).
 local function matchingSenders(text)
     local q = string.lower(text)
     local keys = {}
@@ -454,7 +454,7 @@ function share.onLogin()
     core.refresh()
 end
 
--- Mudou algo na tela: esquece a fila antiga e manda de novo para quem ficou ligado.
+-- Something changed on screen: forget the old queue and send again to whoever stayed on.
 function share.settingsChanged()
     queue, roster = {}, nil
     helloAt = core.now() + 2

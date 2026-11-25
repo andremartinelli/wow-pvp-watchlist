@@ -1,13 +1,13 @@
--- PvP Watchlist: textos em portugues (ptBR) e ingles (enUS).
--- O idioma segue o do cliente (ptBR/ptPT -> portugues, qualquer outro -> ingles) ou a opcao "Idioma".
--- Texto que falta numa lingua cai no ingles.
+-- PvP Watchlist: texts in Portuguese (ptBR) and English (enUS).
+-- The language follows the client (ptBR/ptPT -> Portuguese, anything else -> English) or the "Language" option.
+-- Text missing in one language falls back to English.
 local _, ns = ...
 ns = ns or {}
 
 ns.LOCALES = {}
 
 ns.LOCALES.ptBR = {
-    -- geral
+    -- general
     TITLE = "PvP Watchlist",
     TAG = "PvPW",
     LOADED = "carregado: %d marcado(s). /pvpw para ver os comandos.",
@@ -26,7 +26,7 @@ ns.LOCALES.ptBR = {
     SPOTTED = "Apareceu:",
     SPOTTED_MSG = "%s - te atacou %s, a última em %s em %s.",
     TOOLTIP_LINE = "PvP Watchlist: te atacou %s, a última em %s em %s",
-    -- compartilhamento
+    -- sharing
     HIDE_LINK = "ocultar",
     SRC_FRIENDS = "amigos",
     SRC_GUILD = "guilda",
@@ -58,14 +58,14 @@ ns.LOCALES.ptBR = {
     DBG_SHARE_IGNORED = "mensagem de %s ignorada: não é amigo nem da guilda",
     DBG_SHARE_HELLO = "%s pediu a sua lista",
     DBG_SHARE_FAILED = "compartilhamento falhou: %s",
-    -- opcoes dos botoes
+    -- button choices
     ICON_SKULL = "Caveira", ICON_CROSS = "X", ICON_STAR = "Estrela", ICON_CIRCLE = "Círculo",
     ICON_DIAMOND = "Losango", ICON_TRIANGLE = "Triângulo", ICON_MOON = "Lua", ICON_SQUARE = "Quadrado",
     SOUND_RAID = "Alerta de raide",
     SOUND_READY = "Checagem de prontidão",
     SOUND_QUEST = "Missão falhou",
     LANG_AUTO = "Automático (do jogo)",
-    -- tela de configuracoes
+    -- settings screen
     CYCLER_TIP = "Clique para a próxima opção; botão direito para a anterior.",
     SUBTITLE = "Marca quem te ataca primeiro no PvP de mundo. Lista em \"Marcados\", logo abaixo. Comandos: /pvpw",
     H_DETECTION = "Detecção",
@@ -115,7 +115,7 @@ ns.LOCALES.ptBR = {
     H_TEST = "Teste",
     OPT_TEST = "Modo teste: adversário de duelo conta como inimigo",
     OPT_DEBUG = "Debug: mostrar no chat o que o addon está vendo",
-    -- pagina "Marcados"
+    -- "Marked" page
     LIST_CATEGORY = "Marcados",
     LIST_TITLE = "Jogadores marcados",
     BTN_UNMARK = "Desmarcar",
@@ -130,7 +130,7 @@ ns.LOCALES.ptBR = {
     FILTER_GUILD = "Guilda",
     BTN_HIDE = "Ocultar",
     LIST_ROW_SHARED = "%s - atacou %s %s, última em %s em %s",
-    -- comandos
+    -- commands
     NO_OPTIONS = "A tela de configurações não está disponível neste cliente.",
     OPEN_OPTIONS = "Abra em Opções > AddOns > PvP Watchlist.",
     LIST_HEADER = "%d marcado(s), do mais recente:",
@@ -165,7 +165,7 @@ ns.LOCALES.ptBR = {
         "  /pvpw teste - adversário de duelo conta como inimigo (para testar)",
         "  /pvpw debug - mostra o que o addon está vendo",
     },
-    -- botao do minimapa e menu de addons
+    -- minimap button and AddOns menu
     TIP_STATUS = "Marcação automática: %s",
     TIP_COUNT = "%d jogador(es) marcado(s)",
     TIP_SHARED_COUNT = "%d de amigos, %d da guilda",
