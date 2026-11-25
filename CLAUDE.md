@@ -1,17 +1,24 @@
-# PvP Watchlist: instruções para o Claude
+# PvP Watchlist: instructions for Claude
 
-Addon de WoW: Forever em Lua 5.1 (a versão do jogo). O `.toc` carrega `Locales.lua`, `PvPWatchlist.lua` e `Share.lua`. Os testes na pasta `tests` simulam a API do jogo.
+WoW: Forever addon in Lua 5.1 (the game's version). The `.toc` loads `Locales.lua`, `PvPWatchlist.lua` and `Share.lua`. The tests in the `tests` folder simulate the game API.
 
-## Preparar e testar
+## Language
 
-- `bash scripts/cloud-setup.sh` instala o Lua 5.1 pelo apt. É idempotente; rode se `lua5.1` não existir.
-- `bash scripts/test.sh` roda os quatro testes e termina com erro se algum não chegar ao `ALL OK`. Rode antes de todo commit que mexe no addon.
-- Não há banco, serviços, `.env` nem segredos de desenvolvimento.
-- Todo texto novo do addon entra em português e em inglês no `Locales.lua` (o `test_sharing.lua` confere).
-- Arquivo novo que não faz parte do addon (script, documentação) entra no `ignore` do `.pkgmeta`, senão vai para o zip publicado.
+- Code, comments, names, documentation, commits and PRs are in English. Do not rewrite git history.
+- Player-facing text stays Portuguese where it is interface: the `ptBR` block of `Locales.lua`, `Notes-ptBR` in the `.toc` and the Portuguese slash commands. So do the messages only the owner reads (output of the command-line scripts).
+- `README.md` is the English one and `README.pt-BR.md` the Portuguese one; each links to the other at the top. Keep both up to date.
+- Do not rename the message prefix (`PREFIX = "PvPW"`), the SavedVariables or the locale codes: other players and saved data depend on them.
 
-## Publicação (produção)
+## Setup and tests
 
-- Uma tag `v*` dispara `.github/workflows/release.yml`, que publica no GitHub Releases e no CurseForge. Nunca crie nem envie tag, nem rode o packager com envio.
-- `CF_API_KEY` e `GITHUB_TOKEN` são segredos do CI. Nunca peça, imprima nem grave esses valores.
-- Sem merge: abra o PR e pare.
+- `bash scripts/cloud-setup.sh` installs Lua 5.1 through apt. It is idempotent; run it if `lua5.1` is missing.
+- `bash scripts/test.sh` runs the four tests and fails if any of them does not end with `ALL OK`. Run it before every commit that touches the addon.
+- There is no database, no services, no `.env` and no development secrets.
+- Every new addon text goes into `Locales.lua` in both Portuguese and English (`test_sharing.lua` checks it).
+- A new file that is not part of the addon (script, documentation) goes into the `ignore` list of `.pkgmeta`, otherwise it ships in the published zip.
+
+## Publishing (production)
+
+- A `v*` tag triggers `.github/workflows/release.yml`, which publishes to GitHub Releases and CurseForge. Never create or push a tag, and never run the packager with upload.
+- `CF_API_KEY` and `GITHUB_TOKEN` are CI secrets. Never ask for, print or write these values.
+- No merging: open the PR and stop.
