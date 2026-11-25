@@ -73,17 +73,17 @@ Todos os comandos funcionam em português e em inglês. `/kos` também funciona,
 A pasta `tests` simula a API do jogo para testar o addon fora dele. Rode da pasta principal com Lua 5.1 a 5.4:
 
 ```
-lua tests/test_kos.lua
-lua tests/test_kos2.lua
-lua tests/test_kos3.lua
-lua tests/test_kos4.lua
+lua tests/test_detection.lua
+lua tests/test_settings.lua
+lua tests/test_locale.lua
+lua tests/test_sharing.lua
 ```
 
-O 4 cobre o compartilhamento com amigos, guilda e Battle.net.
+O `test_sharing.lua` cobre o compartilhamento com amigos, guilda e Battle.net.
 
-Cada teste termina com `TUDO OK` quando tudo passa.
+Cada teste termina com `ALL OK` quando tudo passa.
 
-**No Linux e nas sessões na nuvem do Claude Code:** `bash scripts/cloud-setup.sh` instala o Lua 5.1 (a versão do WoW) pelo apt e pode rodar quantas vezes quiser. Depois, `bash scripts/test.sh` roda os quatro testes e termina com erro se algum não chegar ao `TUDO OK`. O addon não tem banco, serviços nem `.env`, então não há mais nada a preparar.
+**No Linux e nas sessões na nuvem do Claude Code:** `bash scripts/cloud-setup.sh` instala o Lua 5.1 (a versão do WoW) pelo apt e pode rodar quantas vezes quiser. Depois, `bash scripts/test.sh` roda os quatro testes e termina com erro se algum não chegar ao `ALL OK`. O addon não tem banco, serviços nem `.env`, então não há mais nada a preparar.
 
 ## Publicação
 

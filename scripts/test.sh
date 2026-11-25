@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Roda todos os testes da pasta tests com o Lua 5.1 (ou o da variavel LUA).
-# Cada teste so passa se sair sem erro e a ultima linha for "TUDO OK";
-# o script termina com codigo 1 se algum falhar, para servir em CI e nas sessoes na nuvem.
+# Runs every test in the tests folder with Lua 5.1 (or the one in the LUA variable).
+# A test passes only if it exits without error and its last line is "ALL OK";
+# the script exits with code 1 if any test fails, so it works in CI and in cloud sessions.
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
@@ -18,11 +18,11 @@ for t in tests/test_*.lua; do
   out="$("$LUA" "$t" 2>&1)"
   code=$?
   last="$(printf '%s\n' "$out" | tail -n 1)"
-  if [ "$code" -eq 0 ] && [ "$last" = "TUDO OK" ]; then
+  if [ "$code" -eq 0 ] && [ "$last" = "ALL OK" ]; then
     echo "OK     $t"
   else
     echo "FALHOU $t (codigo $code, ultima linha: $last)"
-    printf '%s\n' "$out" | grep -E '^FALHA' || printf '%s\n' "$out" | tail -n 15
+    printf '%s\n' "$out" | grep -E '^FAIL' || printf '%s\n' "$out" | tail -n 15
     failed=1
   fi
 done
