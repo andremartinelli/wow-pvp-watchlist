@@ -1,71 +1,71 @@
--- PvP Watchlist 1.5.1 (WoW: Forever). Ate a 1.3.0 se chamava killonsight.
--- Marca quem te ataca primeiro no PvP de mundo e avisa quando ele aparece de novo.
+-- PvP Watchlist 1.5.1 (WoW: Forever). Until 1.3.0 it was called killonsight.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
--- Textos em Locales.lua (portugues e ingles). Icone do addon em media/icon.tga.
--- A troca de marcados com amigos e guilda fica em Share.lua; aqui ficam as listas recebidas (db.shared),
--- o icone de cada lista (sua, amigos, guilda: escolhido nas configuracoes, pode ser o mesmo), os avisos e a tela.
+-- Marks whoever attacks you first in world PvP and warns you when they show up again.
+-- Texts live in Locales.lua (Portuguese and English). Addon icon in media/icon.tga.
+-- Sharing marks with friends and guild lives in Share.lua; this file keeps the received lists (db.shared),
+-- the icon of each list (yours, friends, guild: picked in the settings, can be the same), the alerts and the settings screen.
 --
--- O Forever bloqueia COMBAT_LOG_EVENT_UNFILTERED para addons, entao o addon nao sabe quem deu cada golpe.
--- Como funciona: quando voce leva um golpe (UNIT_COMBAT no "player") ou entra em combate, ele procura, por
--- SCAN_WINDOW segundos, jogadores inimigos por perto (barras de nome, alvo, foco, mouseover) que estejam em
--- combate e com VOCE no alvo. Esses sao marcados, a nao ser que voce tenha atacado o jogador antes.
--- No Forever varios valores ficam "secretos" em combate; tudo que pode vir secreto passa por safe().
--- Configuracoes: Opcoes > AddOns > PvP Watchlist (ou /pvpw config). /kos tambem, se nenhum outro addon usar.
+-- Forever blocks COMBAT_LOG_EVENT_UNFILTERED for addons, so the addon cannot tell who dealt each hit.
+-- How it works: when you take a hit (UNIT_COMBAT on "player") or enter combat, it looks, for
+-- SCAN_WINDOW seconds, for nearby enemy players (nameplates, target, focus, mouseover) who are in
+-- combat and targeting YOU. Those get marked, unless you attacked the player first.
+-- In Forever many values become "secret" in combat; anything that can be secret goes through safe().
+-- Settings: Options > AddOns > PvP Watchlist (or /pvpw config). /kos works too, if no other addon uses it.
 
 local ADDON, ns = ...
 ADDON = ADDON or "PvPWatchlist"
 ns = ns or {}
 
 local ICON_PATH = "Interface\\AddOns\\" .. ADDON .. "\\media\\icon"
-local LINK_BASE = "addon:" .. ADDON .. ":"   -- links do chat: "unmark:<chave>" e "hide:<origem>:<chave>"
+local LINK_BASE = "addon:" .. ADDON .. ":"   -- chat links: "unmark:<key>" and "hide:<source>:<key>"
 local RAID_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
-local ICON_SETTING = { mine = "icon", friends = "friendsIcon", guild = "guildIcon" } -- opcao de icone de cada lista
-local CIRCLES = { "friends", "guild" }        -- listas recebidas, na ordem de prioridade depois da sua
-local SCAN_WINDOW = 3        -- segundos procurando o atacante depois de um golpe (pega o ladino que sai da furtividade)
-local SCAN_STEP = 0.2        -- intervalo entre as procuras dentro dessa janela
-local RECOUNT_GAP = 120      -- um novo ataque do mesmo jogador so soma depois de 2 min
-local ALERT_GAP = 300        -- aviso de "apareceu" no maximo a cada 5 min por jogador
+local ICON_SETTING = { mine = "icon", friends = "friendsIcon", guild = "guildIcon" } -- icon setting of each list
+local CIRCLES = { "friends", "guild" }        -- received lists, in priority order after yours
+local SCAN_WINDOW = 3        -- seconds looking for the attacker after a hit (catches the rogue leaving stealth)
+local SCAN_STEP = 0.2        -- interval between the scans inside that window
+local RECOUNT_GAP = 120      -- a new attack by the same player only counts after 2 min
+local ALERT_GAP = 300        -- "showed up" alert at most every 5 min per player
 local MAX_PLATES = 40
 local ATTACK_ACTIONS = {
     WOUND = true, MISS = true, DODGE = true, PARRY = true, BLOCK = true, RESIST = true,
     ABSORB = true, IMMUNE = true, DEFLECT = true, REFLECT = true, EVADE = true,
 }
 local DEFAULTS = {
-    enabled = true,           -- marcar automaticamente quem te ataca
-    skipIfIAttacked = true,   -- nao marcar quem voce atacou primeiro
-    myAttackMemory = 60,      -- por quantos segundos lembrar do seu ataque
-    ignoreLow = false,        -- ignorar jogadores bem abaixo do seu nivel
-    ignoreLowLevels = 10,     -- diferenca de niveis para ignorar
-    emote = true,             -- fazer um emote no atacante quando ele e marcado
-    emoteToken = "NO",        -- qual emote (/no)
-    icon = 8,                 -- icone de raide da sua lista (8 = caveira)
-    friendsIcon = 7,          -- icone dos marcados por amigos (7 = X)
-    guildIcon = 4,            -- icone dos marcados pela guilda (4 = triangulo verde, a cor do chat da guilda)
+    enabled = true,           -- mark automatically whoever attacks you
+    skipIfIAttacked = true,   -- do not mark whoever you attacked first
+    myAttackMemory = 60,      -- how many seconds to remember your attack
+    ignoreLow = false,        -- ignore players well below your level
+    ignoreLowLevels = 10,     -- level difference to ignore
+    emote = true,             -- do an emote at the attacker when they are marked
+    emoteToken = "NO",        -- which emote (/no)
+    icon = 8,                 -- raid icon of your list (8 = skull)
+    friendsIcon = 7,          -- icon of the players marked by friends (7 = X)
+    guildIcon = 4,            -- icon of the players marked by the guild (4 = green triangle, the guild chat color)
     iconSize = 26,
-    showCount = true,         -- numero de ataques ao lado do icone
+    showCount = true,         -- attack count next to the icon
     sound = true,
     soundId = "raid",
-    msg = true,               -- mensagem no chat quando um marcado aparece
-    center = true,            -- aviso grande no centro da tela
-    tooltip = true,           -- linha no tooltip do jogador
-    test = false,             -- adversario de duelo conta como inimigo
+    msg = true,               -- chat message when a marked player shows up
+    center = true,            -- big alert in the middle of the screen
+    tooltip = true,           -- line in the player's tooltip
+    test = false,             -- duel opponents count as enemies
     debug = false,
-    minimap = true,           -- botao no minimapa
-    minimapAngle = 200,       -- posicao do botao, em graus a partir da direita (sentido anti-horario)
-    language = "auto",        -- "auto" (do jogo), "ptBR" ou "enUS"
-    shareGuild = true,        -- trocar marcados com a guilda (enviar e receber)
-    shareFriends = true,      -- trocar marcados com a lista de amigos
-    shareBnet = false,        -- trocar marcados com amigos do Battle.net
-    sharedAlerts = true,      -- mensagem no chat quando aparece alguem marcado por amigos ou guilda
-    sharedCenter = false,     -- aviso grande no centro tambem para eles
+    minimap = true,           -- minimap button
+    minimapAngle = 200,       -- button position, in degrees from the right (counterclockwise)
+    language = "auto",        -- "auto" (from the game), "ptBR" or "enUS"
+    shareGuild = true,        -- exchange marks with the guild (send and receive)
+    shareFriends = true,      -- exchange marks with the friends list
+    shareBnet = false,        -- exchange marks with Battle.net friends
+    sharedAlerts = true,      -- chat message when someone marked by friends or guild shows up
+    sharedCenter = false,     -- big alert in the middle of the screen for them too
 }
 
--- ---------------------------------------------------------------- idioma
+-- ---------------------------------------------------------------- language
 
 local LOCALES = ns.LOCALES or {}
 local lang = "enUS"
 
--- "auto" segue o cliente: portugues (ptBR/ptPT) ou ingles para todo o resto.
+-- "auto" follows the client: Portuguese (ptBR/ptPT) or English for everything else.
 local function pickLanguage(setting)
     if setting == "ptBR" or setting == "enUS" then return setting end
     local ok, loc = pcall(GetLocale)
@@ -73,7 +73,7 @@ local function pickLanguage(setting)
     return "enUS"
 end
 
--- L.CHAVE devolve o texto no idioma atual; o que faltar cai no ingles e, por fim, na propria chave.
+-- L.KEY returns the text in the current language; what is missing falls back to English and, last, to the key itself.
 local L = setmetatable({}, { __index = function(_, k)
     local t = LOCALES[lang]
     local v = t and t[k]
@@ -83,14 +83,14 @@ local L = setmetatable({}, { __index = function(_, k)
 end })
 lang = pickLanguage("auto")
 
--- Os 8 icones de raide. Cada lista (sua, amigos, guilda) escolhe o seu, e podem ser iguais.
+-- The 8 raid icons. Each list (yours, friends, guild) picks its own, and they can be the same.
 local ICONS = {
     { id = 8, labelKey = "ICON_SKULL" }, { id = 7, labelKey = "ICON_CROSS" }, { id = 1, labelKey = "ICON_STAR" },
     { id = 2, labelKey = "ICON_CIRCLE" }, { id = 3, labelKey = "ICON_DIAMOND" }, { id = 4, labelKey = "ICON_TRIANGLE" },
     { id = 5, labelKey = "ICON_MOON" }, { id = 6, labelKey = "ICON_SQUARE" },
 }
 for _, e in ipairs(ICONS) do e.icon = RAID_ICON .. e.id end
--- Filtro da pagina "Marcados".
+-- Filter of the "Marked" page.
 local LIST_SOURCES = {
     { id = "mine", labelKey = "FILTER_MINE" },
     { id = "friends", labelKey = "FILTER_FRIENDS" },
@@ -109,16 +109,16 @@ local LANGS = {
     { id = "auto", labelKey = "LANG_AUTO" }, { id = "ptBR", label = "Português" }, { id = "enUS", label = "English" },
 }
 
-local db, S                -- PvPWatchlistDB e PvPWatchlistDB.settings
+local db, S                -- PvPWatchlistDB and PvPWatchlistDB.settings
 local scanUntil, nextScan = 0, 0
-local myAttacks = {}       -- chave do jogador -> GetTime() do seu ultimo ataque a ele
-local myAttackGuids = {}   -- GUID do jogador -> GetTime() (o nome pode vir com ou sem reino; o GUID nao muda)
-local lastOwnAction = 0    -- GetTime() da sua ultima magia ofensiva, ataque automatico ou ordem de ataque ao demonio
-local OWN_COMBAT_GAP = 2.5 -- entrar em combate ate 2,5 s depois disso foi acao sua: nao inicia a procura
+local myAttacks = {}       -- player key -> GetTime() of your last attack on them
+local myAttackGuids = {}   -- player GUID -> GetTime() (the name may come with or without realm; the GUID does not change)
+local lastOwnAction = 0    -- GetTime() of your last offensive spell, auto attack or pet attack order
+local OWN_COMBAT_GAP = 2.5 -- entering combat up to 2.5 s after that was your own action: do not start the scan
 local ui = { refreshers = {} }
 local f = CreateFrame("Frame")
 
--- ---------------------------------------------------------------- utilitarios
+-- ---------------------------------------------------------------- utilities
 
 local function isSecret(v)
     if type(issecretvalue) ~= "function" then return false end
@@ -126,7 +126,7 @@ local function isSecret(v)
     return ok and r or false
 end
 
--- Chama fn protegido. Devolve nil no lugar de erro ou de valor secreto.
+-- Calls fn protected. Returns nil instead of an error or secret value.
 local function safe(fn, ...)
     if type(fn) ~= "function" then return nil end
     local ok, a, b, c = pcall(fn, ...)
@@ -163,7 +163,7 @@ local function refreshUI()
     if ui.refreshList then pcall(ui.refreshList) end
 end
 
--- Chave, nome para mostrar e GUID (pode ser nil) de um jogador.
+-- Key, display name and GUID (may be nil) of a player.
 local function unitInfo(unit)
     local name, realm = safe(UnitName, unit)
     if type(name) ~= "string" or name == "" or name == UNKNOWNOBJECT then return nil end
@@ -181,7 +181,7 @@ local function inWorld()
     return true
 end
 
--- Jogador da faccao inimiga que voce pode atacar. No modo teste, qualquer jogador atacavel (duelo) conta.
+-- Enemy-faction player you can attack. In test mode, any attackable player (duel) counts.
 local function isEnemyPlayer(unit)
     if not safe(UnitExists, unit) or not safe(UnitIsPlayer, unit) then return false end
     if safe(UnitIsUnit, unit, "player") then return false end
@@ -190,7 +190,7 @@ local function isEnemyPlayer(unit)
     return S.test and true or false
 end
 
--- true/false, ou nil quando o jogo esconde a resposta.
+-- true/false, or nil when the game hides the answer.
 local function targetsMe(unit)
     local ok, r = pcall(UnitIsUnit, unit .. "target", "player")
     if not ok or isSecret(r) then return nil end
@@ -203,7 +203,7 @@ local function inCombat(unit)
     return r and true or false
 end
 
--- Jogador bem abaixo do seu nivel (opcao "ignorar"). Nivel desconhecido (??) nunca e ignorado.
+-- Player well below your level ("ignore" option). Unknown level (??) is never ignored.
 local function tooLow(unit)
     if not S.ignoreLow then return false end
     local mine, theirs = safe(UnitLevel, "player"), safe(UnitLevel, unit)
@@ -215,11 +215,11 @@ local function findEntry(unit)
     local key, display, guid = unitInfo(unit)
     if not key then return nil end
     local e = db.players[key]
-    if e and e.guid and guid and e.guid ~= guid then return nil end -- mesmo nome, outro personagem
+    if e and e.guid and guid and e.guid ~= guid then return nil end -- same name, other character
     return e, key, display, guid
 end
 
--- Origem ligada nas configuracoes? Amigos vale para a lista de amigos e para o Battle.net.
+-- Source turned on in the settings? Friends covers the friends list and Battle.net.
 local function circleOn(circle)
     if circle == "guild" then return S.shareGuild end
     return S.shareFriends or S.shareBnet
@@ -227,7 +227,7 @@ end
 
 local function circleLabel(circle) return circle == "guild" and L.SRC_GUILD or L.SRC_FRIENDS end
 
--- Marcacao recebida de amigos ou da guilda (nil se oculta, sem dados, desligada ou de outro personagem).
+-- Mark received from friends or guild (nil if hidden, no data, turned off or from another character).
 local function sharedEntry(circle, key, guid)
     if not circleOn(circle) then return nil end
     local list = db.shared and db.shared[circle]
@@ -237,7 +237,7 @@ local function sharedEntry(circle, key, guid)
     return e
 end
 
--- Todas as marcacoes de um jogador inimigo, da mais importante para a menos: a sua, amigos, guilda.
+-- All marks of an enemy player, from most to least important: yours, friends, guild.
 local function marksFor(unit)
     local out = {}
     if not isEnemyPlayer(unit) then return out end
@@ -272,7 +272,7 @@ end
 
 local function plural(n) return n == 1 and L.TIMES_ONE or string.format(L.TIMES_N, n) end
 
--- Icone escolhido para a lista de onde veio a marcacao ("mine", "friends" ou "guild").
+-- Icon chosen for the list the mark came from ("mine", "friends" or "guild").
 local function sourceTexture(source) return findIn(ICONS, S[ICON_SETTING[source] or "icon"]).icon end
 
 local function playAlert(force)
@@ -280,7 +280,7 @@ local function playAlert(force)
     pcall(PlaySound, findIn(SOUNDS, S.soundId).kit(), "Master")
 end
 
--- on = a opcao que liga o aviso (S.center para a sua lista, S.sharedCenter para amigos e guilda).
+-- on = the option that turns the alert on (S.center for your list, S.sharedCenter for friends and guild).
 local function centerWarning(text, on)
     if not on then return end
     if RaidNotice_AddMessage and RaidWarningFrame then
@@ -290,8 +290,8 @@ local function centerWarning(text, on)
     if UIErrorsFrame then pcall(UIErrorsFrame.AddMessage, UIErrorsFrame, text, 1, 0.2, 0.2) end
 end
 
--- Emote direcionado a um jogador (unidade viva: "nameplate3", "target"). Nunca sem alvo: no Forever,
--- PerformEmote(token, nil) cai no seu alvo atual, que pode ser outra pessoa (nota do addon TFTB).
+-- Emote aimed at a player (live unit: "nameplate3", "target"). Never without a target: in Forever,
+-- PerformEmote(token, nil) falls back to your current target, which may be someone else (note from the TFTB addon).
 local function doEmote(unit, force)
     if not (S.emote or force) or type(unit) ~= "string" or unit == "" then return false end
     if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
@@ -307,7 +307,7 @@ local function doEmote(unit, force)
     return false
 end
 
--- ---------------------------------------------------------------- icone nas barras de nome
+-- ---------------------------------------------------------------- icon on the nameplates
 
 local function plateFor(unit)
     if not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return nil end
@@ -320,7 +320,7 @@ local function plateFor(unit)
     return plate
 end
 
--- e = registro do marcado (mostra o icone da origem) ou nil (esconde).
+-- e = record of the marked player (shows the icon of its source) or nil (hides).
 local function setIcon(unit, e, source)
     local plate = plateFor(unit)
     if not plate then return end
@@ -355,7 +355,7 @@ local function setIcon(unit, e, source)
     end
 end
 
--- A marcacao que aparece no jogador (a sua primeiro), de onde ela veio e a chave.
+-- The mark shown on the player (yours first), where it came from and the key.
 local function markedEnemy(unit)
     local m = marksFor(unit)[1]
     if m then return m.e, m.source, m.key end
@@ -376,7 +376,7 @@ local function refreshAll()
     if ui.refreshList then pcall(ui.refreshList) end
 end
 
--- ---------------------------------------------------------------- marcar / desmarcar
+-- ---------------------------------------------------------------- mark / unmark
 
 local function unmarkLink(key)
     return "|H" .. LINK_BASE .. "unmark:" .. key .. "|h|cff66bbff[" .. L.UNMARK_LINK .. "]|r|h"
@@ -404,13 +404,13 @@ local function mark(unit, key, display, guid, how)
     e.name = display
     e.guid = guid or e.guid
     e.class = cls or e.class
-    if type(clsFile) == "string" then e.classFile = clsFile end -- "ROGUE": quem recebe traduz para o idioma dele
+    if type(clsFile) == "string" then e.classFile = clsFile end -- "ROGUE": whoever receives translates it to their language
     if type(lvl) == "number" and lvl > 0 then e.level = lvl end
     e.guild = guild or e.guild
     e.last = t
     e.where = (sub ~= "" and sub ~= zone) and (sub .. ", " .. zone) or zone
     e.how = how
-    e.alertAt = t -- ja esta na sua frente; o aviso de "apareceu" fica para a proxima vez
+    e.alertAt = t -- already in front of you; the "showed up" alert waits for next time
     if how == "manual" then
         say(string.format(L.MARKED_MANUAL, describe(e)) .. " " .. unmarkLink(key))
     else
@@ -431,12 +431,12 @@ local function unmark(key)
     if ns.share then pcall(ns.share.onUnmark, key, e) end
 end
 
--- Links "[desmarcar]" e "[ocultar]" do chat.
+-- "[unmark]" and "[hide]" links in the chat.
 local lastLink, lastLinkAt = nil, 0
 local function handleLink(link)
     if type(link) ~= "string" or link:sub(1, #LINK_BASE) ~= LINK_BASE then return end
     local t = GetTime()
-    if lastLink == link and t - lastLinkAt < 0.5 then return end -- os dois ganchos abaixo podem chamar
+    if lastLink == link and t - lastLinkAt < 0.5 then return end -- both hooks below may call
     lastLink, lastLinkAt = link, t
     local rest = link:sub(#LINK_BASE + 1)
     local key = rest:match("^unmark:(.+)$")
@@ -451,7 +451,7 @@ if type(SetItemRef) == "function" and type(hooksecurefunc) == "function" then
     pcall(hooksecurefunc, "SetItemRef", function(link) handleLink(link) end)
 end
 
--- ---------------------------------------------------------------- quem te atacou
+-- ---------------------------------------------------------------- who attacked you
 
 local function candidateUnits()
     local list, seen = {}, {}
@@ -475,7 +475,7 @@ local function iAttackedFirst(key, guid)
     return t and (now() - t) <= (S.myAttackMemory or 60)
 end
 
-local hasMyDebuff -- definida mais abaixo, junto dos eventos de magia
+local hasMyDebuff -- defined further below, next to the spell events
 
 local function tryMark(u, key, display, guid, how)
     if iAttackedFirst(key, guid) or hasMyDebuff(u) then
@@ -503,7 +503,7 @@ local function scanForAttacker()
             end
         end
     end
-    -- Se o jogo esconder quem e o alvo de cada um, so marca quando ha exatamente um inimigo possivel.
+    -- If the game hides who each one is targeting, it only marks when there is exactly one possible enemy.
     if not found and #unknown == 1 then
         local c = unknown[1]
         tryMark(c[1], c[2], c[3], c[4], "unico inimigo por perto")
@@ -521,7 +521,7 @@ local function startScan(reason)
     nextScan = 0
 end
 
--- Voce atacou alguem: guarda (pela chave e pelo GUID) para nao marcar quem so revidou.
+-- You attacked someone: stores it (by key and by GUID) so we do not mark whoever only fought back.
 local function rememberMyAttack(unit)
     lastOwnAction = now()
     if isEnemyPlayer(unit) then
@@ -534,7 +534,7 @@ local function rememberMyAttack(unit)
     end
 end
 
--- true = magia ofensiva, false = de ajuda (cura, buff), nil = nao deu para saber (valor secreto ou API ausente).
+-- true = offensive spell, false = helpful (heal, buff), nil = could not tell (secret value or missing API).
 local function spellIsHarmful(spellID)
     if spellID == nil or isSecret(spellID) then return nil end
     if C_Spell and C_Spell.IsSpellHarmful then
@@ -545,12 +545,12 @@ local function spellIsHarmful(spellID)
     return nil
 end
 
--- "Fedrath" de "Fedrath", "Fedrath-Vorn" ou "Fedrath-Vorn-JxJ-US" (o Forever usa os tres formatos), em minusculas.
+-- "Fedrath" from "Fedrath", "Fedrath-Vorn" or "Fedrath-Vorn-JxJ-US" (Forever uses all three formats), lowercase.
 local function baseName(s) return string.lower(s:match("^([^%-]+)") or s) end
 
--- Voce lancou uma magia. Se nao for de ajuda, conta como ataque ao jogador inimigo que ela atingiu.
--- No Forever o nome do alvo e a propria magia podem vir secretos ou noutro formato: sem como conferir,
--- vale o inimigo no seu alvo (ou no mouseover/foco). Melhor deixar de marcar alguem do que marcar quem voce atacou.
+-- You cast a spell. If it is not helpful, it counts as an attack on the enemy player it hit.
+-- In Forever the target name and the spell itself may come secret or in another format: with no way to check,
+-- the enemy on your target (or mouseover/focus) counts. Better to skip marking someone than to mark whoever you attacked.
 local function onSpellSent(targetName, spellID)
     if spellIsHarmful(spellID) == false then return end
     lastOwnAction = now()
@@ -570,9 +570,9 @@ local function onSpellSent(targetName, spellID)
     if not tn then debug(L.DBG_CAST_UNKNOWN) end
 end
 
--- Fim de uma magia sua (as com tempo de conjuracao entram em combate quando acertam). Segunda chance de
--- guardar o ataque se o UNIT_SPELLCAST_SENT nao chegou ou veio ilegivel: so quando o jogo confirma que a
--- magia e ofensiva, porque aqui nao ha o nome do alvo.
+-- End of a spell of yours (the ones with cast time enter combat when they land). Second chance to
+-- store the attack if UNIT_SPELLCAST_SENT did not arrive or came unreadable: only when the game confirms the
+-- spell is offensive, because there is no target name here.
 local function onSpellDone(spellID)
     local harmful = spellIsHarmful(spellID)
     if harmful == false then return end
@@ -584,20 +584,20 @@ local function onSpellDone(spellID)
     end
 end
 
--- O inimigo ja tem uma magia sua nele (maldicao, Corrupcao...)? Entao foi voce quem atacou primeiro.
--- Caminho independente dos eventos de magia. Se o jogo esconder as auras, nao decide nada.
+-- Does the enemy already have a spell of yours on them (curse, Corruption...)? Then you attacked first.
+-- Path independent of the spell events. If the game hides the auras, it decides nothing.
 function hasMyDebuff(unit)
     if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return false end
     local aura = safe(C_UnitAuras.GetAuraDataByIndex, unit, 1, "HARMFUL|PLAYER")
     return type(aura) == "table"
 end
 
--- Os eventos de unidade sao registrados so para "player"; se o jogo esconder o campo, vale como seu.
+-- Unit events are registered only for "player"; if the game hides the field, it counts as yours.
 local function isPlayerUnit(unit) return isSecret(unit) or unit == "player" end
 
--- ---------------------------------------------------------------- aviso quando um marcado aparece
+-- ---------------------------------------------------------------- alert when a marked player shows up
 
--- Marcados de amigos e guilda: so mensagem no chat (e, se ligado, o aviso no centro); sem som.
+-- Marks from friends and guild: chat message only (and, if on, the center alert); no sound.
 local function checkUnit(unit, fromPlate)
     local e, source, key = markedEnemy(unit)
     if fromPlate then setIcon(unit, e, source) end
@@ -625,7 +625,7 @@ local function checkUnit(unit, fromPlate)
     end
 end
 
--- Linhas no tooltip do jogador marcado: a sua e as de amigos e guilda.
+-- Lines in the marked player's tooltip: yours and the ones from friends and guild.
 local function onTooltipUnit(tooltip)
     if not S or not S.tooltip then return end
     if GameTooltip and tooltip ~= GameTooltip then return end
@@ -647,7 +647,7 @@ elseif GameTooltip and GameTooltip.HookScript then
     pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetUnit", onTooltipUnit)
 end
 
--- ---------------------------------------------------------------- tela de configuracoes (Opcoes > AddOns)
+-- ---------------------------------------------------------------- settings screen (Options > AddOns)
 
 local LABEL_X, CONTROL_X, ROW = 20, 330, 26
 
@@ -731,7 +731,7 @@ local function slider(parent, y, label, key, min, max, step, suffix, onChange)
     return y - ROW
 end
 
--- Botao que passa pelas opcoes da lista (clique: proxima; botao direito: anterior).
+-- Button that cycles through the list's options (click: next; right-click: previous).
 local function cycler(parent, y, label, key, list, onChange)
     local text = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("TOPLEFT", LABEL_X + 28, y - 5)
@@ -794,7 +794,7 @@ local function buildListPage(category)
     nextB:SetSize(90, 22)
     nextB:SetPoint("LEFT", prev, "RIGHT", 8, 0)
     nextB:SetText(L.BTN_NEXT)
-    -- Filtro: sua lista, amigos ou guilda (clique: proximo; botao direito: anterior).
+    -- Filter: your list, friends or guild (click: next; right-click: previous).
     ui.source = "mine"
     local filter = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
     filter:SetSize(170, 22)
@@ -951,7 +951,7 @@ local function toggle(key, label)
     refreshUI()
 end
 
--- Idioma: mensagens mudam na hora; os textos fixos da tela de configuracoes so depois de /reload.
+-- Language: messages change right away; the fixed texts of the settings screen only after /reload.
 local function setLanguage(id)
     S.language = findIn(LANGS, id).id
     lang = pickLanguage(S.language)
@@ -960,8 +960,8 @@ local function setLanguage(id)
 end
 function ui.languageChanged() setLanguage(S.language) end
 
--- ---------------------------------------------------------------- botao do minimapa e menu de addons
--- Feito sem biblioteca, com a arte e as medidas que a LibDBIcon usa no cliente moderno.
+-- ---------------------------------------------------------------- minimap button and addons menu
+-- Built without a library, with the art and measures LibDBIcon uses on the modern client.
 
 local function markedCount()
     local n = 0
@@ -982,13 +982,13 @@ local function launcherTooltip(owner, canDrag)
     GameTooltip:Show()
 end
 
--- Clique esquerdo: configuracoes. Direito: liga/desliga a marcacao automatica.
+-- Left click: settings. Right: turns automatic marking on/off.
 local function launcherClick(button)
     if not db then return end
     if button == "RightButton" then toggle("enabled", L.T_ENABLED) else openOptions() end
 end
 
--- Menu de addons ao lado do minimapa (linhas AddonCompartmentFunc no .toc). Precisam ser globais.
+-- Addons menu next to the minimap (AddonCompartmentFunc lines in the .toc). They must be global.
 function PvPWatchlist_OnAddonCompartmentClick(_, button) launcherClick(button) end
 function PvPWatchlist_OnAddonCompartmentEnter(_, menuButton) if db then launcherTooltip(menuButton, false) end end
 function PvPWatchlist_OnAddonCompartmentLeave() if GameTooltip then GameTooltip:Hide() end end
@@ -1071,7 +1071,7 @@ function ui.showMinimap()
     end
 end
 
--- ---------------------------------------------------------------- comandos
+-- ---------------------------------------------------------------- commands
 
 local function findKeysByName(text)
     local q = string.lower(text)
@@ -1084,7 +1084,7 @@ local function findKeysByName(text)
     return keys
 end
 
--- source = nil (sua lista), "friends" ou "guild".
+-- source = nil (your list), "friends" or "guild".
 local function listMarked(source)
     local list = source and (db.shared and db.shared[source] or {}) or db.players
     local rows = {}
@@ -1107,7 +1107,7 @@ local function listMarked(source)
     end
 end
 
--- Cada comando aceita o nome em portugues e em ingles.
+-- Each command accepts the name in Portuguese and in English.
 local COMMANDS = {
     lista = "list", list = "list",
     config = "config", opcoes = "config", ["opções"] = "config", options = "config",
@@ -1129,8 +1129,8 @@ local LIST_ARGS = { amigos = "friends", friends = "friends", guilda = "guild", g
 local LANG_ARGS = { auto = "auto", pt = "ptBR", ptbr = "ptBR", ["português"] = "ptBR", portugues = "ptBR",
     en = "enUS", enus = "enUS", english = "enUS", ingles = "enUS", ["inglês"] = "enUS" }
 
--- /kos vira atalho so se nenhum outro addon (por exemplo o Kill on Sight) ja usar. Roda no PLAYER_LOGIN,
--- quando os outros addons ja registraram os comandos deles.
+-- /kos becomes a shortcut only if no other addon (for example Kill on Sight) already uses it. Runs on PLAYER_LOGIN,
+-- when the other addons have already registered their commands.
 local function kosOwner()
     for k, v in pairs(_G) do
         if type(k) == "string" and type(v) == "string" and k:find("^SLASH_.+%d$")
@@ -1202,10 +1202,10 @@ SlashCmdList.PVPWATCHLIST = function(msg)
     end
 end
 
--- ---------------------------------------------------------------- eventos
+-- ---------------------------------------------------------------- events
 
 f:SetScript("OnUpdate", function(_, elapsed)
-    if db and ns.share then pcall(ns.share.onUpdate, elapsed) end -- fila de envio do compartilhamento
+    if db and ns.share then pcall(ns.share.onUpdate, elapsed) end -- send queue of the sharing
     if scanUntil == 0 then return end
     local t = now()
     if t > scanUntil then scanUntil = 0 return end
@@ -1253,7 +1253,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             startScan(string.format(L.DBG_HIT, isSecret(action) and "?" or tostring(action)))
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
-        -- Entrou em combate logo depois de uma acao sua: foi voce que comecou. So um golpe em voce inicia a procura.
+        -- Entered combat right after an action of yours: you started it. Only a hit on you starts the scan.
         if now() - lastOwnAction <= OWN_COMBAT_GAP then debug(L.DBG_COMBAT_MINE) else startScan(L.DBG_COMBAT) end
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, targetName, _, spellID = ...
@@ -1261,14 +1261,14 @@ f:SetScript("OnEvent", function(self, event, ...)
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit, _, spellID = ...
         if isPlayerUnit(unit) then onSpellDone(spellID) end
-    elseif event == "PLAYER_ENTER_COMBAT" then -- ataque automatico (corpo a corpo)
+    elseif event == "PLAYER_ENTER_COMBAT" then -- auto attack (melee)
         rememberMyAttack("target")
     elseif event == "PET_ATTACK_START" then
         rememberMyAttack("pettarget")
     elseif event == "NAME_PLATE_UNIT_ADDED" then
         local unit = ...
         checkUnit(unit, true)
-        if scanUntil > 0 then nextScan = 0 end -- inimigo novo na tela durante a procura: olha logo
+        if scanUntil > 0 then nextScan = 0 end -- new enemy on screen during the scan: look right away
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
         setIcon(..., nil)
     elseif event == "PLAYER_TARGET_CHANGED" then
@@ -1277,7 +1277,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         checkUnit("mouseover", false)
     elseif event == "PLAYER_ENTERING_WORLD" then
         refreshPlates()
-        ui.showMinimap() -- o minimapa pode mudar de tamanho depois do carregamento
+        ui.showMinimap() -- the minimap may change size after loading
     end
 end)
 
@@ -1301,12 +1301,12 @@ else
     f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 end
 
--- O que o Share.lua (carregado depois deste arquivo) usa daqui.
+-- What Share.lua (loaded after this file) uses from here.
 ns.core = {
     L = L, safe = safe, isSecret = isSecret, say = say, debug = debug, now = now, inWorld = inWorld,
     CIRCLES = CIRCLES,
     db = function() return db end,
     settings = function() return S end,
     refresh = refreshAll,
-    registerEvent = function(event) pcall(f.RegisterEvent, f, event) end, -- evento que o cliente nao tem: ignora
+    registerEvent = function(event) pcall(f.RegisterEvent, f, event) end, -- event the client does not have: ignore
 }
