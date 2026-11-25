@@ -21,4 +21,5 @@ WoW: Forever addon in Lua 5.1 (the game's version). The `.toc` loads `Locales.lu
 
 - A `v*` tag triggers `.github/workflows/release.yml`, which publishes to GitHub Releases and CurseForge. Never create or push a tag, and never run the packager with upload.
 - `CF_API_KEY` and `GITHUB_TOKEN` are CI secrets. Never ask for, print or write these values.
+- The publishing steps live outside this public repository, in the owner's private notes (folder `projetos/wow-pvp-watchlist`).
 - No merging: open the PR and stop.

@@ -85,10 +85,6 @@ Each test ends with `ALL OK` when everything passes.
 
 **On Linux and in Claude Code cloud sessions:** `bash scripts/cloud-setup.sh` installs Lua 5.1 (the version WoW uses) through apt and can run as many times as you want. Then `bash scripts/test.sh` runs the four tests and exits with an error if any of them does not reach `ALL OK`. The addon has no database, services or `.env`, so there is nothing else to set up.
 
-## Publishing
-
-A `v*` tag (for example `v1.4.0`) triggers GitHub Actions, which packages the addon with the [BigWigs Packager](https://github.com/BigWigsMods/packager) (configured in `.pkgmeta`) and publishes it to GitHub Releases and CurseForge.
-
 ## License
 
 [MIT](LICENSE). Made by André Martinelli with help from Claude (Anthropic). Up to version 1.3.0 the addon was called killonsight.

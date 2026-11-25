@@ -5,8 +5,6 @@ ignore:
   - scripts
   - README.md
   - README.pt-BR.md
-  - CURSEFORGE.md
-  - CURSEFORGE.pt-BR.md
   - CLAUDE.md
   - media/icon.svg
   - .github
