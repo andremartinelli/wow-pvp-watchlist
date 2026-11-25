@@ -4,6 +4,7 @@ ignore:
   - tests
   - scripts
   - README.md
+  - README.pt-BR.md
   - CURSEFORGE.md
   - CLAUDE.md
   - media/icon.svg
