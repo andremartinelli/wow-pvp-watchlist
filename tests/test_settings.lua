@@ -237,7 +237,15 @@ check(#tip.lines == 0, "tooltip off")
 
 print("-- list on the subpage and unmark by button")
 list.panel.scripts.OnShow(list.panel)
-local rowBtn = buttons[9] -- 8 = language
+local killBtn = buttons[9] -- 8 = language, 9 = kill alert
+check(S.killAlert == "always" and killBtn.text == "Sempre", "kill alert: Always by default")
+click(killBtn)
+check(S.killAlert == "afterDeath" and killBtn.text == "Só depois da minha morte", "kill alert: only after my death")
+click(killBtn)
+check(S.killAlert == "off" and killBtn.text == "Desligado", "kill alert: off")
+click(killBtn, "RightButton"); click(killBtn, "RightButton")
+check(S.killAlert == "always", "right click goes back to Always")
+local rowBtn = buttons[10]
 check(rowBtn.shown, "first list row with an Unmark button")
 out = {}; click(rowBtn)
 check(has("desmarcado"), "Unmark button works")

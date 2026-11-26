@@ -1,6 +1,6 @@
--- PvP Watchlist 1.5.1 (WoW: Forever). Until 1.3.0 it was called killonsight.
+-- PvP Watchlist 1.6.0 (WoW: Forever). Until 1.3.0 it was called killonsight.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
--- Marks whoever attacks you first in world PvP and warns you when they show up again.
+-- Also says in the chat when an enemy player you attacked dies (kill alert, no sound).
 -- Texts live in Locales.lua (Portuguese and English). Addon icon in media/icon.tga.
 -- Sharing marks with friends and guild lives in Share.lua; this file keeps the received lists (db.shared),
 -- the icon of each list (yours, friends, guild: picked in the settings, can be the same), the alerts and the settings screen.
@@ -58,6 +58,7 @@ local DEFAULTS = {
     shareBnet = false,        -- exchange marks with Battle.net friends
     sharedAlerts = true,      -- chat message when someone marked by friends or guild shows up
     sharedCenter = false,     -- big alert in the middle of the screen for them too
+    killAlert = "always",     -- chat line when an enemy you attacked dies: "always", "afterDeath" (yours) or "off"
 }
 
 -- ---------------------------------------------------------------- language
@@ -105,6 +106,10 @@ local SOUNDS = {
     { id = "ready", labelKey = "SOUND_READY", kit = function() return (SOUNDKIT and SOUNDKIT.READY_CHECK) or 8960 end },
     { id = "quest", labelKey = "SOUND_QUEST", kit = function() return (SOUNDKIT and SOUNDKIT.IG_QUEST_FAILED) or 847 end },
 }
+local KILL_ALERTS = {
+    { id = "always", labelKey = "KILL_ALWAYS" }, { id = "afterDeath", labelKey = "KILL_AFTER_DEATH" },
+    { id = "off", labelKey = "KILL_OFF" },
+}
 local LANGS = {
     { id = "auto", labelKey = "LANG_AUTO" }, { id = "ptBR", label = "Português" }, { id = "enUS", label = "English" },
 }
@@ -115,6 +120,12 @@ local myAttacks = {}       -- player key -> GetTime() of your last attack on the
 local myAttackGuids = {}   -- player GUID -> GetTime() (the name may come with or without realm; the GUID does not change)
 local lastOwnAction = 0    -- GetTime() of your last offensive spell, auto attack or pet attack order
 local OWN_COMBAT_GAP = 2.5 -- entering combat up to 2.5 s after that was your own action: do not start the scan
+local KILL_MEMORY = 30     -- kill alert: enemy you attacked in the last 30 s (Curse of Agony lasts 24 s)
+local KILL_STEP = 0.5      -- interval between the checks for dead enemies
+local nextKillCheck = 0
+local myDebuffSeen = {}    -- player GUID (or key) -> GetTime() when a spell of yours was last seen on them
+local killed = {}          -- player GUID (or key) -> true once their death was reported
+local myDeathAt            -- GetTime() of your last death
 local ui = { refreshers = {} }
 local f = CreateFrame("Frame")
 
@@ -595,6 +606,53 @@ end
 -- Unit events are registered only for "player"; if the game hides the field, it counts as yours.
 local function isPlayerUnit(unit) return isSecret(unit) or unit == "player" end
 
+-- ---------------------------------------------------------------- kill alert (chat only, no sound)
+
+-- With no combat log, the addon cannot tell who dealt the killing blow. It reports enemy players you attacked
+-- (or who had a spell of yours on them) in the last KILL_MEMORY seconds and then died in front of you.
+-- shortcut: a hunter's Feign Death may look like a death; add a confirmation delay if that shows up in play.
+local function lastHitOn(key, guid)
+    local t = myAttacks[key] or 0
+    if guid and (myAttackGuids[guid] or 0) > t then t = myAttackGuids[guid] end
+    if (myDebuffSeen[guid or key] or 0) > t then t = myDebuffSeen[guid or key] end
+    return t
+end
+
+local function announceKill(unit, display)
+    local meDead = safe(UnitIsDeadOrGhost, "player") and true or false
+    if S.killAlert == "afterDeath" and not meDead then return end
+    local cls, lvl = safe(UnitClass, unit), safe(UnitLevel, unit)
+    local who = describe({ name = display, class = cls, level = (type(lvl) == "number" and lvl > 0) and lvl or nil })
+    local skull = "|T" .. RAID_ICON .. "8:14|t"
+    if meDead and myDeathAt then
+        say(string.format(L.KILLED_AFTER_DEATH, skull, who, math.floor(now() - myDeathAt + 0.5)))
+    else
+        say(string.format(L.KILLED, skull, who))
+    end
+end
+
+local function checkKill(unit)
+    if S.killAlert == "off" or not inWorld() or not safe(UnitIsPlayer, unit) then return end
+    local key, display, guid = unitInfo(unit)
+    if not key then return end
+    local id = guid or key
+    local ok, dead = pcall(UnitIsDead, unit)
+    if not ok or isSecret(dead) then return end -- hidden during combat: the next check tries again
+    if not dead then
+        killed[id] = nil -- alive (or back from the graveyard): can be reported again
+        if isEnemyPlayer(unit) and hasMyDebuff(unit) then myDebuffSeen[id] = now() end
+        return
+    end
+    if killed[id] or now() - lastHitOn(key, guid) > KILL_MEMORY then return end
+    killed[id] = true
+    announceKill(unit, display)
+end
+
+local function checkKills()
+    if S.killAlert == "off" or not inWorld() then return end
+    for _, u in ipairs(candidateUnits()) do checkKill(u) end
+end
+
 -- ---------------------------------------------------------------- alert when a marked player shows up
 
 -- Marks from friends and guild: chat message only (and, if on, the center alert); no sound.
@@ -862,7 +920,7 @@ local function buildOptions()
         scroll:SetPoint("TOPLEFT", 0, -4)
         scroll:SetPoint("BOTTOMRIGHT", -28, 4)
         content = CreateFrame("Frame", nil, scroll)
-        content:SetSize(620, 1060)
+        content:SetSize(620, 1120)
         scroll:SetScrollChild(content)
     end
     local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -925,6 +983,9 @@ local function buildOptions()
     y = checkbox(content, y, L.OPT_SHARE_BNET, "shareBnet", L.OPT_SHARE_BNET_TIP, shareChanged)
     y = checkbox(content, y, L.OPT_SHARED_ALERTS, "sharedAlerts", L.OPT_SHARED_ALERTS_TIP)
     y = checkbox(content, y, L.OPT_SHARED_CENTER, "sharedCenter")
+    y = y - 8
+    y = header(content, y, L.H_KILLS)
+    y = cycler(content, y, L.OPT_KILL, "killAlert", KILL_ALERTS)
     y = y - 8
     y = header(content, y, L.H_TEST)
     y = checkbox(content, y, L.OPT_TEST, "test", nil, refreshPlates)
@@ -1206,8 +1267,12 @@ end
 
 f:SetScript("OnUpdate", function(_, elapsed)
     if db and ns.share then pcall(ns.share.onUpdate, elapsed) end -- send queue of the sharing
-    if scanUntil == 0 then return end
     local t = now()
+    if db and t >= nextKillCheck then
+        nextKillCheck = t + KILL_STEP
+        checkKills()
+    end
+    if scanUntil == 0 then return end
     if t > scanUntil then scanUntil = 0 return end
     if t >= nextScan then
         nextScan = t + SCAN_STEP
@@ -1270,7 +1335,10 @@ f:SetScript("OnEvent", function(self, event, ...)
         checkUnit(unit, true)
         if scanUntil > 0 then nextScan = 0 end -- new enemy on screen during the scan: look right away
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
+        checkKill(...) -- the nameplate may go away as the enemy dies, before the next check
         setIcon(..., nil)
+    elseif event == "PLAYER_DEAD" then
+        myDeathAt = now()
     elseif event == "PLAYER_TARGET_CHANGED" then
         checkUnit("target", false)
     elseif event == "UPDATE_MOUSEOVER_UNIT" then
@@ -1291,6 +1359,7 @@ f:RegisterEvent("PLAYER_TARGET_CHANGED")
 f:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+f:RegisterEvent("PLAYER_DEAD")
 if f.RegisterUnitEvent then
     f:RegisterUnitEvent("UNIT_COMBAT", "player")
     f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")

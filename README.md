@@ -14,6 +14,7 @@ Addon for **WoW: Forever**. It marks with a skull whoever attacks you first in w
 - Players who only fought back because you attacked first are not marked.
 - Shares the list with friends and guildmates who also use the addon. Each list (yours, your friends' and your guild's) uses the icon you pick in the settings, and they can all be the same. By default: skull for yours, cross for friends and triangle for the guild.
 - Can do an emote at the attacker (`/no`, `/rude`, `/laugh`...).
+- Tells you in your chat, with no sound, when an enemy you attacked dies, even after your own death (see **Kill alert**).
 - Has a minimap button, an entry in the addons menu and a settings screen under **Options > AddOns > PvP Watchlist**.
 - Works in English and Portuguese. The language follows the game client, or you can pick one in the settings.
 
@@ -22,6 +23,21 @@ Addon for **WoW: Forever**. It marks with a skull whoever attacks you first in w
 Forever blocks the combat log for addons (`COMBAT_LOG_EVENT_UNFILTERED`), so no addon knows who dealt each hit. When you get hit or enter combat, PvP Watchlist looks for 3 seconds for nearby enemy players who are in combat and targeting you. If the game hides who each of them is targeting, it only marks when there is exactly one possible enemy.
 
 So it can mark the wrong player or let someone slip by. To fix it, use the **[unmark]** link in the chat, the **Marked** list in the settings, or `/pvpw mark` with the player targeted.
+
+## Kill alert
+
+When an enemy player you attacked in the last 30 seconds dies in front of you, you get a line in your own chat, with no sound:
+
+- `Fulano (Shaman 38) died.`
+- `Fulano (Shaman 38) died 8 s after you.` when your DoTs finish the job after your death.
+
+An attack is a spell or hit of yours, an attack order to your pet or a spell of yours still on them. Since Forever does not let addons read the combat log, the addon does not know who dealt the killing blow: it only tells you that someone you attacked died.
+
+- After your death, the alert only shows if you do not release your spirit while your DoTs tick: the addon needs to see the enemy.
+- If the game hides the death during combat, the alert shows as soon as the game does (for example, with the corpse on your target).
+- A hunter using Feign Death may look dead.
+
+In **Options > AddOns > PvP Watchlist**, under **Kills**: **Always** (default), **Only after my death** or **Off**.
 
 ## Sharing with friends and guild
 

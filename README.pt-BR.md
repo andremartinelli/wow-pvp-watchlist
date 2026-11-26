@@ -14,6 +14,7 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 - Não marca quem só revidou porque você atacou primeiro.
 - Troca a lista com os amigos e com a guilda que também usam o addon. Cada lista (a sua, a dos amigos e a da guilda) tem o ícone que você escolher nas configurações, e pode ser o mesmo para todas. O padrão é caveira para a sua, X para amigos e triângulo para a guilda.
 - Pode fazer um emote no atacante (`/no`, `/rude`, `/laugh`...).
+- Avisa no seu chat, sem som, quando um inimigo que você atacou morre, inclusive depois da sua morte (veja **Aviso de abate**).
 - Tem botão no minimapa, entrada no menu de addons e tela de configurações em **Opções > AddOns > PvP Watchlist**.
 - Funciona em português e em inglês. O idioma segue o do jogo ou pode ser escolhido nas configurações.
 
@@ -22,6 +23,21 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 O Forever bloqueia o registro de combate para addons (`COMBAT_LOG_EVENT_UNFILTERED`), então nenhum addon sabe quem deu cada golpe. Quando você leva um golpe ou entra em combate, o PvP Watchlist procura, por 3 segundos, jogadores inimigos por perto que estejam em combate e com você no alvo. Se o jogo esconder quem está no alvo de cada um, ele só marca quando existe um único inimigo possível.
 
 Por isso ele pode errar ou deixar alguém passar. Para corrigir, use o link **[desmarcar]** no chat, a lista **Marcados** nas configurações ou `/pvpw marcar` com o jogador no alvo.
+
+## Aviso de abate
+
+Quando um jogador inimigo que você atacou nos últimos 30 segundos morre na sua frente, aparece uma linha só no seu chat, sem som:
+
+- `Fulano (Xamã 38) morreu.`
+- `Fulano (Xamã 38) morreu 8 s depois de você.` quando os seus DoTs terminam o serviço depois da sua morte.
+
+Conta como ataque uma magia ou golpe seu, uma ordem de ataque ao seu demônio ou uma magia sua que ainda está nele. Como o Forever não deixa addons lerem o registro de combate, o addon não sabe quem deu o golpe final: ele só avisa que alguém que você atacou morreu.
+
+- Depois da sua morte, o aviso só aparece se você não soltar o espírito enquanto os DoTs batem: o addon precisa ver o inimigo.
+- Se o jogo esconder a morte durante o combate, o aviso sai assim que o jogo mostrar (por exemplo, com o corpo no seu alvo).
+- Um caçador fingindo de morto pode aparecer como morto.
+
+Em **Opções > AddOns > PvP Watchlist**, em **Abates**: **Sempre** (padrão), **Só depois da minha morte** ou **Desligado**.
 
 ## Compartilhamento com amigos e guilda
 
