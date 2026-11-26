@@ -3,7 +3,7 @@
 ## Notes: Marks whoever attacks you first in world PvP, warns you when they show up again and shares the list with friends and guild. /pvpw
 ## Notes-ptBR: Marca quem te ataca primeiro no PvP de mundo, avisa quando ele aparece de novo e troca a lista com amigos e guilda. /pvpw
 ## Author: Andre Martinelli
-## Version: 1.5.1
+## Version: 1.6.0
 ## SavedVariables: PvPWatchlistDB
 ## IconTexture: Interface\AddOns\PvPWatchlist\media\icon
 ## AddonCompartmentFunc: PvPWatchlist_OnAddonCompartmentClick

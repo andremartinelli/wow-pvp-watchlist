@@ -23,7 +23,8 @@ UnitAffectingCombat = function(u) local r = resolve(u); return r and r.combat or
 UnitClass = function(u) local r = resolve(u); return r and r.class end
 UnitLevel = function(u) local r = resolve(u); return r and r.level end
 GetGuildInfo = function(u) local r = resolve(u); return r and r.guild end
-UnitIsDeadOrGhost = function() return false end
+UnitIsDeadOrGhost = function(u) local r = resolve(u); return r and r.dead or false end
+UnitIsDead = function(u) local r = resolve(u); if r and r.secretDead then return SECRET end return r and r.dead or false end
 IsInInstance = function() return false, "none" end
 GetZoneText = function() return "Stranglethorn" end
 GetSubZoneText = function() return "Acampamento de Nesingwary" end
@@ -278,4 +279,83 @@ addPlate("nameplate15", enemy("Ladino", "Reino", "Player-1-ROG", { target = "pla
 out = {}; fire("PLAYER_REGEN_DISABLED"); tick(1)
 check(marked("Ladino"), "no action of yours before: searches and marks")
 removePlate("nameplate15")
+
+print("-- 15. Kill alert: chat line when an enemy you attacked dies")
+local S = PvPWatchlistDB.settings
+check(S.killAlert == "always", "default: always")
+local function attack(token, data)
+  addPlate(token, data); units.target = units[token]
+  fire("UNIT_SPELLCAST_SENT", "player", data.name, "k-" .. token, 172)
+  units.target = nil
+end
+clock = clock + 400
+attack("nameplate20", enemy("Presa", "Reino", "Player-1-PRE", { class = "Mago", level = 30 }))
+local soundsBefore = sounds
+out = {}; units.nameplate20.dead = true; tick(1)
+check(has("Presa%-Reino %(Mago 30%) morreu%.$"), "an enemy you attacked dies: one chat line")
+check(sounds == soundsBefore, "the kill line plays no sound")
+out = {}; tick(2); removePlate("nameplate20")
+check(not has("morreu"), "does not repeat the same death")
+
+addPlate("nameplate21", enemy("Estranho", "Reino", "Player-1-EST"))
+out = {}; units.nameplate21.dead = true; tick(1)
+check(not has("morreu"), "an enemy you never attacked dies: nothing")
+removePlate("nameplate21")
+
+addPlate("nameplate22", enemy("Amaldicoado", "Reino", "Player-1-AMA", { myDebuff = "Ruína da Agonia" }))
+tick(1); units.nameplate22.myDebuff = nil
+out = {}; units.nameplate22.dead = true; tick(1)
+check(has("Amaldicoado%-Reino morreu%."), "only your curse on him (no spell event): still reported")
+removePlate("nameplate22")
+
+attack("nameplate23", enemy("Antigo", "Reino", "Player-1-ANT"))
+clock = clock + 31
+out = {}; units.nameplate23.dead = true; tick(1)
+check(not has("morreu"), "attack older than 30 s: nothing")
+removePlate("nameplate23")
+
+print("-- 15b. You die and your DoTs finish him")
+attack("nameplate24", enemy("Xama", "Reino", "Player-1-XAM", { class = "Xamã", level = 38 }))
+units.player.dead = true; fire("PLAYER_DEAD")
+clock = clock + 8
+out = {}; units.nameplate24.dead = true; tick(0.5)
+check(has("Xama%-Reino %(Xamã 38%) morreu 8 s depois de você%."), "died 8 s after you")
+check(not has("Marcado"), "being dead does not start the attacker search")
+units.player.dead = false; removePlate("nameplate24")
+
+print("-- 15c. Only after my death / off")
+S.killAlert = "afterDeath"
+attack("nameplate25", enemy("Vivo", "Reino", "Player-1-VIV"))
+out = {}; units.nameplate25.dead = true; tick(1)
+check(not has("morreu"), "after-death mode: a kill while you are alive says nothing")
+removePlate("nameplate25")
+attack("nameplate26", enemy("Morto", "Reino", "Player-1-MOR"))
+units.player.dead = true; fire("PLAYER_DEAD"); clock = clock + 3
+out = {}; units.nameplate26.dead = true; tick(0.5)
+check(has("Morto%-Reino morreu 3 s depois de você%."), "after-death mode: a kill after your death is reported")
+units.player.dead = false; removePlate("nameplate26")
+S.killAlert = "off"
+attack("nameplate27", enemy("Desligado", "Reino", "Player-1-DES"))
+out = {}; units.nameplate27.dead = true; tick(1)
+check(not has("morreu"), "off: nothing")
+removePlate("nameplate27")
+S.killAlert = "always"
+
+print("-- 15d. The game hides the death during combat, the nameplate goes away, he comes back")
+attack("nameplate28", enemy("Escondido", "Reino", "Player-1-ESC"))
+out = {}; units.nameplate28.dead = true; units.nameplate28.secretDead = true; tick(1)
+check(not has("morreu"), "death hidden during combat: waits")
+units.nameplate28.secretDead = false; tick(1)
+check(has("Escondido%-Reino morreu%."), "reported as soon as the game shows it")
+removePlate("nameplate28")
+attack("nameplate29", enemy("Sumiu", "Reino", "Player-1-SUM"))
+out = {}; units.nameplate29.dead = true; removePlate("nameplate29")
+check(has("Sumiu%-Reino morreu%."), "nameplate removed as he dies: still reported")
+attack("nameplate30", enemy("Volta", "Reino", "Player-1-VOL"))
+units.nameplate30.dead = true; tick(1)
+units.nameplate30.dead = false; tick(1)
+units.target = units.nameplate30; fire("UNIT_SPELLCAST_SENT", "player", "Volta", "k-volta", 172); units.target = nil
+out = {}; units.nameplate30.dead = true; tick(1)
+check(has("Volta%-Reino morreu%."), "came back to life and died again: reported again")
+removePlate("nameplate30")
 print(fails == 0 and "ALL OK" or (fails .. " FAIL(S)"))
