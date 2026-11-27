@@ -150,7 +150,7 @@ fire("PLAYER_LOGIN")
 check(SLASH_PVPWATCHLIST1 == "/pvpw" and SLASH_PVPWATCHLIST2 == nil, "/kos taken: does not register the shortcut")
 check(has("/kos is already used by another addon %(SLASH_KILLONSIGHT1%): use /pvpw"), "debug explains that /kos is taken")
 S.debug = false
-check(#created.CheckButton == 17, "17 checkboxes (with the minimap one and the 5 sharing ones)")
+check(#created.CheckButton == 18, "18 checkboxes (with the minimap one, the attack warning and the 5 sharing ones)")
 
 print("-- minimap button")
 local mm
@@ -195,7 +195,7 @@ PvPWatchlist_OnAddonCompartmentLeave()
 print("-- hide the button")
 out = {}; slash("minimap")
 check(S.minimap == false and mm.shown == false and has("Minimap button off%."), "/kos minimap hides the button")
-local box = created.CheckButton[10]
+local box = created.CheckButton[11]
 box.checked = true; click(box)
 check(S.minimap == true and mm.shown == true, "Show minimap button checkbox shows it again")
 

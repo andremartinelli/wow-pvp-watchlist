@@ -125,10 +125,11 @@ local main, list = categories[1], categories[2]
 check(main and main.name == "PvP Watchlist", "main screen registered in Options > AddOns as PvP Watchlist")
 check(list and list.name == "Marcados", "Marcados subpage registered")
 local boxes, sliders, buttons = created.CheckButton, created.Slider, created.Button
-check(#boxes == 17 and #sliders == 3, "17 checkboxes and 3 sliders")
--- checkbox order: enabled, skipIfIAttacked, ignoreLow, emote, showCount, sound, msg, center, tooltip, minimap,
+check(#boxes == 18 and #sliders == 3, "18 checkboxes and 3 sliders")
+-- checkbox order: enabled, castWarning, skipIfIAttacked, ignoreLow, emote, showCount, sound, msg, center, tooltip, minimap,
 -- shareGuild, shareFriends, shareBnet, sharedAlerts, sharedCenter, test, debug
-local B = { enabled = boxes[1], skip = boxes[2], ignoreLow = boxes[3], emote = boxes[4], showCount = boxes[5], sound = boxes[6], msg = boxes[7], center = boxes[8], tooltip = boxes[9], minimap = boxes[10], shareGuild = boxes[11], shareFriends = boxes[12], shareBnet = boxes[13], sharedAlerts = boxes[14], sharedCenter = boxes[15], test = boxes[16], debug = boxes[17] }
+local B = { enabled = boxes[1], castWarning = boxes[2], skip = boxes[3], ignoreLow = boxes[4], emote = boxes[5], showCount = boxes[6], sound = boxes[7], msg = boxes[8], center = boxes[9], tooltip = boxes[10], minimap = boxes[11], shareGuild = boxes[12], shareFriends = boxes[13], shareBnet = boxes[14], sharedAlerts = boxes[15], sharedCenter = boxes[16], test = boxes[17], debug = boxes[18] }
+check(B.castWarning.checked == true and S.castWarning == true, "attack warning: checkbox on by default")
 check(B.shareGuild.checked == true and B.shareFriends.checked == true and B.shareBnet.checked == false
   and B.sharedAlerts.checked == true and B.sharedCenter.checked == false, "sharing: guild and friends on, Battle.net and center warning off")
 local SL = { memory = sliders[1], levels = sliders[2], size = sliders[3] }
