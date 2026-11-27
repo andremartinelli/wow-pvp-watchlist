@@ -12,6 +12,7 @@ Addon for **WoW: Forever**. It marks with a skull whoever attacks you first in w
 - Marked players get an icon on their nameplate, with the attack count next to it.
 - When a marked player shows up again, you get a warning: a sound, a chat message and an alert in the middle of the screen. Their tooltip shows the history too.
 - Players who only fought back because you attacked first are not marked.
+- Warns you, like a raid warning, when an enemy starts casting a spell at you, with the spell's icon and name (see **Attack warning**).
 - Shares the list with friends and guildmates who also use the addon. Each list (yours, your friends' and your guild's) uses the icon you pick in the settings, and they can all be the same. By default: skull for yours, cross for friends and triangle for the guild.
 - Can do an emote at the attacker (`/no`, `/rude`, `/laugh`...).
 - Tells you in your chat, with no sound, when an enemy you attacked dies, even after your own death (see **Kill alert**).
@@ -23,6 +24,22 @@ Addon for **WoW: Forever**. It marks with a skull whoever attacks you first in w
 Forever blocks the combat log for addons (`COMBAT_LOG_EVENT_UNFILTERED`), so no addon knows who dealt each hit. When you get hit or enter combat, PvP Watchlist looks for 3 seconds for nearby enemy players who are in combat and targeting you. If the game hides who each of them is targeting, it only marks when there is exactly one possible enemy.
 
 So it can mark the wrong player or let someone slip by. To fix it, use the **[unmark]** link in the chat, the **Marked** list in the settings, or `/pvpw mark` with the player targeted.
+
+## Attack warning
+
+When an enemy player starts casting a spell at you, you get one warning, like a raid warning: the sound, the alert in the middle of the screen and a chat line.
+
+- `Fulano is casting [icon] Frostbolt at you!`
+
+When the hit lands, the attacker is marked as usual, without a second sound. If you hit back during their cast, they are still marked: they started it.
+
+- Once per enemy per fight. Not if you attacked them first, and not if they are too low with **Ignore players far below my level** on.
+- Only spells with a cast bar (Frostbolt, Drain Life). An instant spell gives no warning: the attacker is marked on the hit, as before.
+- The enemy's nameplate must be on screen.
+- The game hides the spell from addons, but still shows its icon and name in the warning. The name comes in your game's language.
+- The sound, the middle-of-screen alert and the chat line follow the **Play a sound**, **Big warning in the middle of the screen** and **Chat message** options.
+
+In **Options > AddOns > PvP Watchlist**, under **Detection**: **Attack warning** (on by default).
 
 ## Kill alert
 

@@ -1,6 +1,7 @@
--- PvP Watchlist 1.6.0 (WoW: Forever). Until 1.3.0 it was called killonsight.
+-- PvP Watchlist 1.7.0 (WoW: Forever). Until 1.3.0 it was called killonsight.
 -- Marks whoever attacks you first in world PvP and warns you when they show up again.
--- Also says in the chat when an enemy player you attacked dies (kill alert, no sound).
+-- Also says in the chat when an enemy player you attacked dies (kill alert, no sound), and warns you, like a raid
+-- warning, when an enemy starts casting a spell at you (attack warning).
 -- Texts live in Locales.lua (Portuguese and English). Addon icon in media/icon.tga.
 -- Sharing marks with friends and guild lives in Share.lua; this file keeps the received lists (db.shared),
 -- the icon of each list (yours, friends, guild: picked in the settings, can be the same), the alerts and the settings screen.
@@ -32,6 +33,7 @@ local ATTACK_ACTIONS = {
 }
 local DEFAULTS = {
     enabled = true,           -- mark automatically whoever attacks you
+    castWarning = true,       -- attack warning: sound and alert when an enemy starts casting a spell at you
     skipIfIAttacked = true,   -- do not mark whoever you attacked first
     myAttackMemory = 60,      -- how many seconds to remember your attack
     ignoreLow = false,        -- ignore players well below your level
@@ -125,6 +127,9 @@ local KILL_STEP = 0.5      -- interval between the checks for dead enemies
 local nextKillCheck = 0
 local myDebuffSeen = {}    -- player GUID (or key) -> GetTime() when a spell of yours was last seen on them
 local killed = {}          -- player GUID (or key) -> true once their death was reported
+local castSeen = {}        -- player GUID (or key) -> GetTime() of their last spell at you (attack warning)
+local castWarnedAt = {}    -- player GUID (or key) -> GetTime() of the attack warning about them
+local CAST_HIT_GAP = 15    -- after an attack warning, the hit marks without a second sound, even if you hit back
 local myDeathAt            -- GetTime() of your last death
 local ui = { refreshers = {} }
 local f = CreateFrame("Frame")
@@ -397,6 +402,12 @@ local function hideLink(circle, key)
     return "|H" .. LINK_BASE .. "hide:" .. circle .. ":" .. key .. "|h|cff66bbff[" .. L.HIDE_LINK .. "]|r|h"
 end
 
+-- An attack warning about this player went out in the last CAST_HIT_GAP seconds: they started the fight.
+local function castWarned(id)
+    local t = castWarnedAt[id]
+    return t ~= nil and now() - t < CAST_HIT_GAP
+end
+
 local function mark(unit, key, display, guid, how)
     local t = time()
     local e = db.players[key]
@@ -428,7 +439,7 @@ local function mark(unit, key, display, guid, how)
         say(string.format(L.MARKED, describe(e), e.where, plural(e.count)) .. " " .. unmarkLink(key))
         doEmote(unit)
     end
-    playAlert()
+    if how == "manual" or not castWarned(guid or key) then playAlert() end -- the attack warning already sounded
     refreshAll()
     if ns.share then pcall(ns.share.onMark, key, e) end
 end
@@ -489,7 +500,8 @@ end
 local hasMyDebuff -- defined further below, next to the spell events
 
 local function tryMark(u, key, display, guid, how)
-    if iAttackedFirst(key, guid) or hasMyDebuff(u) then
+    -- a warned spell means they started it: your attack during their cast is a reaction
+    if (iAttackedFirst(key, guid) or hasMyDebuff(u)) and not castWarned(guid or key) then
         debug(string.format(L.DBG_FOUGHT_BACK, display))
     elseif tooLow(u) then
         debug(string.format(L.DBG_TOO_LOW, display))
@@ -605,6 +617,43 @@ end
 
 -- Unit events are registered only for "player"; if the game hides the field, it counts as yours.
 local function isPlayerUnit(unit) return isSecret(unit) or unit == "player" end
+
+-- ---------------------------------------------------------------- attack warning (an enemy starts a spell at you)
+
+-- Forever hides the spell name and icon from addons (secret values), but text built from them still shows on
+-- screen (seen in the chat). Only spells with a cast bar: an instant spell is marked on the hit, as before.
+local WARNING_ICON = "|TInterface\\DialogFrame\\UI-Dialog-Icon-AlertNew:18|t "
+
+local function castText(display, name, icon)
+    local spell = L.CAST_SPELL_UNKNOWN
+    if isSecret(name) or (type(name) == "string" and name ~= "") then
+        spell = name
+        if isSecret(icon) or type(icon) == "number" then spell = "|T" .. icon .. ":18|t " .. name end
+    end
+    return WARNING_ICON .. string.format(L.CAST_BEFORE, "|cffff8080" .. display .. "|r") .. " " .. spell .. " " .. L.CAST_AFTER
+end
+
+-- Once per enemy per fight, with the same rules as the mark: not if you attacked first or they are too low.
+local function warnCast(unit, channel)
+    if not S.castWarning or isSecret(unit) or type(unit) ~= "string" or not inWorld() then return end
+    if safe(UnitIsDeadOrGhost, "player") or not isEnemyPlayer(unit) or targetsMe(unit) ~= true then return end
+    local key, display, guid = unitInfo(unit)
+    if not key then return end
+    local id, t = guid or key, now()
+    local last = castSeen[id]
+    castSeen[id] = t
+    if last and t - last < RECOUNT_GAP then return end -- not their first spell at you in this fight
+    local e = findEntry(unit)
+    if e and e.last and time() - e.last < RECOUNT_GAP then return end -- they already hit you: marked, with sound
+    if iAttackedFirst(key, guid) or hasMyDebuff(unit) or tooLow(unit) then return end
+    local ok, name, _, icon = pcall(channel and UnitChannelInfo or UnitCastingInfo, unit)
+    if not ok then name, icon = nil, nil end
+    castWarnedAt[id] = t
+    local text = castText(display, name, icon)
+    playAlert()
+    centerWarning(text, S.center)
+    if S.msg then say(text) end
+end
 
 -- ---------------------------------------------------------------- kill alert (chat only, no sound)
 
@@ -932,6 +981,7 @@ local function buildOptions()
     local y = -64
     y = header(content, y, L.H_DETECTION)
     y = checkbox(content, y, L.OPT_ENABLED, "enabled", L.OPT_ENABLED_TIP)
+    y = checkbox(content, y, L.OPT_CAST_WARNING, "castWarning", L.OPT_CAST_WARNING_TIP)
     y = checkbox(content, y, L.OPT_SKIP, "skipIfIAttacked", L.OPT_SKIP_TIP)
     y = slider(content, y, L.OPT_MEMORY, "myAttackMemory", 10, 300, 10, " s")
     y = checkbox(content, y, L.OPT_IGNORE_LOW, "ignoreLow", L.OPT_IGNORE_LOW_TIP)
@@ -1326,6 +1376,8 @@ f:SetScript("OnEvent", function(self, event, ...)
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit, _, spellID = ...
         if isPlayerUnit(unit) then onSpellDone(spellID) end
+    elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
+        warnCast(..., event == "UNIT_SPELLCAST_CHANNEL_START")
     elseif event == "PLAYER_ENTER_COMBAT" then -- auto attack (melee)
         rememberMyAttack("target")
     elseif event == "PET_ATTACK_START" then
@@ -1360,6 +1412,8 @@ f:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 f:RegisterEvent("PLAYER_DEAD")
+f:RegisterEvent("UNIT_SPELLCAST_START")         -- any unit: the attack warning looks at enemy nameplates
+f:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
 if f.RegisterUnitEvent then
     f:RegisterUnitEvent("UNIT_COMBAT", "player")
     f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")

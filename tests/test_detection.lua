@@ -1,6 +1,8 @@
 -- Minimal simulation of the WoW API to test PvP Watchlist outside the game.
 local clock = 1000
+-- As in the game: joining text with a secret value gives another secret value.
 local SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
+getmetatable(SECRET).__concat = function() return SECRET end
 issecretvalue = function(v) return v == SECRET end
 local units = {}
 local secretTargeting = false
@@ -38,7 +40,7 @@ local sounds = 0
 PlaySound = function() sounds = sounds + 1 end
 C_Spell = { IsSpellHarmful = function() return true end }
 local out = {}
-DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) m = m:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"); table.insert(out, m); print("  chat> " .. m) end }
+DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) if m == SECRET then m = "<secret line>" end m = m:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"); table.insert(out, m); print("  chat> " .. m) end }
 local plates = {}
 local function newPlate()
   local function mk() local t = { shown = false }
@@ -358,4 +360,72 @@ units.target = units.nameplate30; fire("UNIT_SPELLCAST_SENT", "player", "Volta",
 out = {}; units.nameplate30.dead = true; tick(1)
 check(has("Volta%-Reino morreu%."), "came back to life and died again: reported again")
 removePlate("nameplate30")
+
+print("-- 16. Attack warning: an enemy starts casting a spell at you")
+local centers = {}
+RaidWarningFrame = {}
+RaidNotice_AddMessage = function(_, text) table.insert(centers, text) end
+local casting = {} -- unit -> { name, icon } returned by UnitCastingInfo / UnitChannelInfo
+UnitCastingInfo = function(u) local c = casting[u]; if c then return c.name, "", c.icon, 5000, 7500 end end
+UnitChannelInfo = UnitCastingInfo
+check(S.castWarning == true, "attack warning on by default")
+clock = clock + 400
+addPlate("nameplate31", enemy("Gelado", "Reino", "Player-1-GEL", { target = "player", class = "Mago", level = 40 }))
+casting.nameplate31 = { name = "Seta de Gelo", icon = 135846 }
+local before = sounds
+out = {}; fire("UNIT_SPELLCAST_START", "nameplate31")
+check(sounds == before + 1, "one sound at the start of the spell")
+check(has("Gelado%-Reino está lançando |T135846:18|t Seta de Gelo em você!"), "chat line with the spell icon and name")
+check(#centers == 1 and centers[1]:find("Seta de Gelo em você!"), "raid warning in the middle of the screen")
+out = {}; fire("UNIT_SPELLCAST_START", "target"); fire("UNIT_SPELLCAST_START", "nameplate31")
+check(sounds == before + 1 and #centers == 1, "the same enemy's next spells in the fight: no new warning")
+units.nameplate31.combat = true
+out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 300, 1); tick(1)
+check(marked("Gelado") and sounds == before + 1, "the hit marks him without a second sound")
+removePlate("nameplate31")
+
+addPlate("nameplate32", enemy("Reagiu", "Reino", "Player-1-REA", { target = "player" }))
+casting.nameplate32 = { name = "Seta Sombria", icon = 136197 }
+out = {}; fire("UNIT_SPELLCAST_CHANNEL_START", "nameplate32")
+check(has("Reagiu%-Reino está lançando .- Seta Sombria"), "channeled spell warns too")
+units.target = units.nameplate32
+fire("UNIT_SPELLCAST_SENT", "player", "Reagiu", "r41", 172) -- you hit back during their cast
+units.target = nil; units.nameplate32.combat = true
+out = {}; fire("UNIT_COMBAT", "player", "WOUND", "", 300, 1); tick(1)
+check(marked("Reagiu"), "you hit back during their cast: they started it, still marked")
+removePlate("nameplate32")
+
+attack("nameplate33", enemy("Vitima2", "Reino", "Player-1-VI2", { target = "player" }))
+casting.nameplate33 = { name = "Choque", icon = 1 }
+before = sounds
+out = {}; fire("UNIT_SPELLCAST_START", "nameplate33")
+check(sounds == before and not has("está lançando"), "you attacked first: no warning")
+removePlate("nameplate33")
+
+addPlate("nameplate34", enemy("Distraido", "Reino", "Player-1-DIS", { target = nil }))
+casting.nameplate34 = { name = "Cura", icon = 2 }
+out = {}; fire("UNIT_SPELLCAST_START", "nameplate34")
+check(not has("está lançando"), "a spell not aimed at you: no warning")
+removePlate("nameplate34")
+
+addPlate("nameplate35", enemy("Secreto", "Reino", "Player-1-SEC", { target = "player" }))
+casting.nameplate35 = { name = SECRET, icon = SECRET }
+before = sounds
+out = {}; centers = {}; fire("UNIT_SPELLCAST_START", "nameplate35")
+check(sounds == before + 1 and has("<secret line>") and centers[1] == SECRET, "secret spell name and icon: shown without being read")
+removePlate("nameplate35")
+
+addPlate("nameplate36", enemy("Semnome", "Reino", "Player-1-SNM", { target = "player" }))
+out = {}; fire("UNIT_SPELLCAST_START", "nameplate36")
+check(has("Semnome%-Reino está lançando uma magia em você!"), "no cast info: 'a spell'")
+removePlate("nameplate36")
+
+S.castWarning = false
+addPlate("nameplate37", enemy("Desligou", "Reino", "Player-1-DSL", { target = "player" }))
+casting.nameplate37 = { name = "Seta de Gelo", icon = 135846 }
+before = sounds
+out = {}; fire("UNIT_SPELLCAST_START", "nameplate37")
+check(sounds == before and not has("está lançando"), "option off: nothing")
+removePlate("nameplate37")
+S.castWarning = true
 print(fails == 0 and "ALL OK" or (fails .. " FAIL(S)"))

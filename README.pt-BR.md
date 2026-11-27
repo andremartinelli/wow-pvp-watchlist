@@ -12,6 +12,7 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 - Os marcados ganham um ícone na barra de nome, com o número de ataques ao lado.
 - Quando um marcado aparece de novo, você recebe um aviso: som, mensagem no chat e aviso no centro da tela. O tooltip dele também mostra o histórico.
 - Não marca quem só revidou porque você atacou primeiro.
+- Avisa, como um aviso de raide, quando um inimigo começa a lançar uma magia em você, com o ícone e o nome da magia (veja **Aviso de ataque**).
 - Troca a lista com os amigos e com a guilda que também usam o addon. Cada lista (a sua, a dos amigos e a da guilda) tem o ícone que você escolher nas configurações, e pode ser o mesmo para todas. O padrão é caveira para a sua, X para amigos e triângulo para a guilda.
 - Pode fazer um emote no atacante (`/no`, `/rude`, `/laugh`...).
 - Avisa no seu chat, sem som, quando um inimigo que você atacou morre, inclusive depois da sua morte (veja **Aviso de abate**).
@@ -23,6 +24,22 @@ Addon para **WoW: Forever**. Marca com uma caveira quem te ataca primeiro no PvP
 O Forever bloqueia o registro de combate para addons (`COMBAT_LOG_EVENT_UNFILTERED`), então nenhum addon sabe quem deu cada golpe. Quando você leva um golpe ou entra em combate, o PvP Watchlist procura, por 3 segundos, jogadores inimigos por perto que estejam em combate e com você no alvo. Se o jogo esconder quem está no alvo de cada um, ele só marca quando existe um único inimigo possível.
 
 Por isso ele pode errar ou deixar alguém passar. Para corrigir, use o link **[desmarcar]** no chat, a lista **Marcados** nas configurações ou `/pvpw marcar` com o jogador no alvo.
+
+## Aviso de ataque
+
+Quando um jogador inimigo começa a lançar uma magia em você, aparece um aviso, como um aviso de raide: o som, o aviso no centro da tela e uma linha no chat.
+
+- `Fulano está lançando [ícone] Seta de Gelo em você!`
+
+Quando o golpe chega, o atacante é marcado como sempre, sem um segundo som. Se você revidar durante a magia dele, ele é marcado do mesmo jeito: foi ele quem começou.
+
+- Uma vez por inimigo em cada luta. Não avisa se você atacou primeiro, nem se ele for de nível bem mais baixo com **Ignorar jogadores bem abaixo do meu nível** ligado.
+- Só magias com barra de lançamento (Seta de Gelo, Drenar Vida). Magia instantânea não tem aviso: o atacante é marcado no golpe, como antes.
+- A barra de nome do inimigo precisa estar na tela.
+- O jogo esconde a magia dos addons, mas mostra o ícone e o nome dela no aviso. O nome vem no idioma do seu jogo.
+- O som, o aviso no centro e a linha no chat seguem as opções **Tocar som**, **Aviso grande no centro da tela** e **Mensagem no chat**.
+
+Em **Opções > AddOns > PvP Watchlist**, em **Detecção**: **Aviso de ataque** (ligado por padrão).
 
 ## Aviso de abate
 
